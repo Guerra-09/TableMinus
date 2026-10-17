@@ -96,9 +96,9 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
   return (
     <div className="welcome">
       <div className="welcome-intro">
-        <div className="welcome-logo">T</div>
-        <div className="welcome-title">TablePlus Clone</div>
-        <div className="muted">Modern, native-feeling database client</div>
+        <div className="welcome-logo">T−</div>
+        <div className="welcome-title">TableMinus</div>
+        <div className="muted">Free, open-source, lightweight database client</div>
         <div className="welcome-actions">
           <button className="btn btn-primary" onClick={() => setFormState({ config: createEmptyConnection() })}>
             Create a new connection…

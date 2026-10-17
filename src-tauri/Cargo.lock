@@ -4220,7 +4220,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tableplus-clone"
+name = "tableminus"
 version = "0.1.0"
 dependencies = [
  "futures-util",

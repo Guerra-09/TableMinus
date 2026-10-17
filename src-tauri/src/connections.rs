@@ -5,7 +5,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::error::AppResult;
 
-const KEYCHAIN_SERVICE: &str = "dev.jguerra.tableplusclone";
+const KEYCHAIN_SERVICE: &str = "dev.jguerra.tableminus";
 const CONNECTIONS_FILE: &str = "connections.json";
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]

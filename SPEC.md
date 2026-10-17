@@ -1,4 +1,4 @@
-# TablePlus Clone — Feature Spec v1
+# TableMinus — Feature Spec v0.1
 
 Fuente: documentación pública de TablePlus (docs.tableplus.com) + observación de la app.
 Sin descompilar ni copiar código/assets. Estado: ✅ implementado · 🟡 parcial · ⬜ pendiente.

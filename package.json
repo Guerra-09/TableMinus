@@ -1,7 +1,9 @@
 {
-  "name": "tableplus-clone",
+  "name": "tableminus",
   "private": true,
   "version": "0.1.0",
+  "description": "TableMinus \u2014 free, open-source, lightweight database client",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

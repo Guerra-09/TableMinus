@@ -93,7 +93,7 @@ impl DbPool {
                     .host(&config.host)
                     .port(config.port)
                     .username(&config.user)
-                    .application_name("tableplus-clone");
+                    .application_name("tableminus");
                 if !config.database.is_empty() {
                     options = options.database(&config.database);
                 }

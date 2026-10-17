@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    tableplus_clone_lib::run()
+    tableminus_lib::run()
 }

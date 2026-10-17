@@ -396,7 +396,7 @@ mod tests {
 
     #[tokio::test]
     async fn sqlite_introspection_and_queries() {
-        let pool = sqlite_pool("tableplus-clone-introspection.sqlite").await;
+        let pool = sqlite_pool("tableminus-introspection.sqlite").await;
         pool.execute_transaction(&[
             "CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT NOT NULL)".into(),
             "CREATE TABLE books (id INTEGER PRIMARY KEY, author_id INTEGER REFERENCES authors(id), title TEXT, price REAL, cover BLOB, published INTEGER DEFAULT 0)".into(),
