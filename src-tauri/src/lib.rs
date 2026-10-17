@@ -4,6 +4,7 @@ mod db;
 mod error;
 mod introspect;
 mod local_server;
+mod ssh_tunnel;
 
 use tauri::{Manager, RunEvent};
 

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import packageInfo from "../../package.json";
+import { ChangelogModal } from "./ChangelogModal";
 import { ConnectionForm } from "./ConnectionForm";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { Modal } from "./Modal";
@@ -46,6 +48,7 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
   const [serverTransitions, setServerTransitions] = useState<Record<string, ServerTransition>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [serverLog, setServerLog] = useState<{ connectionName: string; content: string } | null>(null);
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
 
   const reloadConnections = useCallback(async () => {
     try {
@@ -187,6 +190,9 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
             Import from URL…
           </button>
         </div>
+        <button className="welcome-version" onClick={() => setIsChangelogOpen(true)} title="See what's new">
+          Version {packageInfo.version} · What's new
+        </button>
       </div>
 
       <div className="welcome-connections">
@@ -286,6 +292,8 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
           </pre>
         </Modal>
       )}
+
+      {isChangelogOpen && <ChangelogModal appVersion={packageInfo.version} onClose={() => setIsChangelogOpen(false)} />}
 
       {contextMenu && <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />}
     </div>

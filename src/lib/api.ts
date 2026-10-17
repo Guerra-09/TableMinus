@@ -14,13 +14,13 @@ import type {
 export const api = {
   listConnections: () => invoke<ConnectionConfig[]>("list_connections"),
 
-  saveConnection: (config: ConnectionConfig, password: string | null) =>
-    invoke<ConnectionConfig>("save_connection", { config, password }),
+  saveConnection: (config: ConnectionConfig, password: string | null, sshSecret: string | null = null) =>
+    invoke<ConnectionConfig>("save_connection", { config, password, sshSecret }),
 
   deleteConnection: (id: string) => invoke<void>("delete_connection", { id }),
 
-  testConnection: (config: ConnectionConfig, password: string | null) =>
-    invoke<string>("test_connection", { config, password }),
+  testConnection: (config: ConnectionConfig, password: string | null, sshSecret: string | null) =>
+    invoke<string>("test_connection", { config, password, sshSecret }),
 
   openConnection: (id: string) => invoke<OpenedConnection>("open_connection", { id }),
 

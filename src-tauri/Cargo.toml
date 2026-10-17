@@ -1,6 +1,6 @@
 [package]
 name = "tableminus"
-version = "0.2.0"
+version = "0.3.0"
 description = "TableMinus — free, open-source, lightweight database client"
 authors = ["Jose Guerra"]
 license = "MIT"
@@ -21,7 +21,7 @@ tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-tokio = { version = "1", features = ["sync", "time", "fs", "process"] }
+tokio = { version = "1", features = ["sync", "time", "fs", "process", "net", "io-util", "rt"] }
 futures-util = "0.3"
 uuid = { version = "1", features = ["v4"] }
 sqlx = { version = "0.8", default-features = false, features = [
@@ -31,6 +31,7 @@ sqlx = { version = "0.8", default-features = false, features = [
   "mysql",
   "sqlite",
 ] }
+russh = { version = "0.64", default-features = false, features = ["ring", "rsa", "flate2"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 
 [target.'cfg(unix)'.dependencies]

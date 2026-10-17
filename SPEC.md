@@ -13,7 +13,8 @@ Sin descompilar ni copiar código/assets. Estado: ✅ implementado · 🟡 parci
 - ✅ Importar desde URL (`postgres://user:pass@host:port/db`, `mysql://…`, `sqlite:///path`).
 - ✅ Password en el keychain del SO (no en el JSON).
 - ⬜ Grupos de conexiones (drag & drop), export/import de conexiones con password.
-- ⬜ SSH tunnel, TLS mode.
+- ✅ SSH tunnel: llave privada (con passphrase), password o agente; host key TOFU; secretos en keychain.
+- ⬜ TLS mode.
 - ✅ Servidor local gestionado (MySQL/PostgreSQL): botón ▶/■ en el launcher, detección de instalaciones Homebrew, inicialización + usuario/DB en primer arranque, log, parada al salir. (Extra de TableMinus, inspirado en DBngin.)
 - ⬜ Deeplink / CLI (`open -a … "postgresql://…?table=…&column=…&operation=…"`).
 

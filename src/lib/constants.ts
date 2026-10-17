@@ -61,13 +61,19 @@ export function createEmptyConnection(driver: Driver = "postgres"): ConnectionCo
     color: tagColor("local"),
     safeMode: "silent",
     localServer: null,
+    ssh: null,
   };
 }
+
+export const DEFAULT_SSH_PORT = 22;
 
 export function describeConnection(connection: ConnectionConfig): string {
   if (connection.driver === "sqlite") return connection.filePath;
   const database = connection.database ? `/${connection.database}` : "";
-  return `${connection.user ? `${connection.user}@` : ""}${connection.host}:${connection.port}${database}`;
+  const databaseAddress = `${connection.user ? `${connection.user}@` : ""}${connection.host}:${connection.port}${database}`;
+  const ssh = connection.ssh;
+  if (!ssh?.isEnabled) return databaseAddress;
+  return `${databaseAddress} via SSH ${ssh.user}@${ssh.host}${ssh.port && ssh.port !== DEFAULT_SSH_PORT ? `:${ssh.port}` : ""}`;
 }
 
 export const isMacPlatform = navigator.userAgent.includes("Mac");

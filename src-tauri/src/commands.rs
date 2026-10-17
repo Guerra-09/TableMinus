@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -10,11 +10,15 @@ use crate::{
     error::{AppError, AppResult},
     introspect::{self, DbObject, TableStructure},
     local_server::{self, LocalServerManager, LocalServerStatus, ServerInstallation},
+    ssh_tunnel::SshTunnel,
 };
+
+const SSH_KNOWN_HOSTS_FILE: &str = "known_hosts";
 
 #[derive(Default)]
 pub struct AppState {
     pools: RwLock<HashMap<String, DbPool>>,
+    tunnels: RwLock<HashMap<String, SshTunnel>>,
 }
 
 #[derive(Serialize)]
@@ -34,6 +38,50 @@ impl AppState {
             .get(connection_id)
             .cloned()
             .ok_or_else(|| AppError::Message("Connection is not open".into()))
+    }
+
+    async fn close_session(&self, connection_id: &str) {
+        if let Some(pool) = self.pools.write().await.remove(connection_id) {
+            pool.close().await;
+        }
+        if let Some(tunnel) = self.tunnels.write().await.remove(connection_id) {
+            tunnel.close().await;
+        }
+    }
+}
+
+/// Connects to the database, first opening an SSH tunnel when the connection is
+/// configured to go through SSH. The database host and port are then resolved
+/// from the SSH server's point of view.
+async fn connect_database(
+    app: &AppHandle,
+    config: &ConnectionConfig,
+    password: Option<String>,
+    ssh_secret: Option<String>,
+) -> AppResult<(DbPool, Option<SshTunnel>)> {
+    let Some(ssh) = config.active_ssh() else {
+        return Ok((DbPool::connect(config, password).await?, None));
+    };
+    let known_hosts_path = app.path().app_data_dir()?.join(SSH_KNOWN_HOSTS_FILE);
+    let remote_host = if config.host.trim().is_empty() { "127.0.0.1" } else { config.host.trim() };
+    let tunnel = SshTunnel::open(ssh, ssh_secret, remote_host, config.port, known_hosts_path).await?;
+    let mut tunneled_config = config.clone();
+    tunneled_config.host = "127.0.0.1".into();
+    tunneled_config.port = tunnel.local_port;
+    match DbPool::connect(&tunneled_config, password).await {
+        Ok(pool) => Ok((pool, Some(tunnel))),
+        Err(error) => {
+            tunnel.close().await;
+            Err(AppError::Message(format!("SSH tunnel is up, but the database connection failed: {error}")))
+        }
+    }
+}
+
+fn resolve_secret(provided: Option<String>, connection_id: &str, read_stored: fn(&str) -> AppResult<Option<String>>) -> AppResult<Option<String>> {
+    match provided {
+        Some(secret) => Ok(Some(secret)),
+        None if !connection_id.is_empty() => read_stored(connection_id),
+        None => Ok(None),
     }
 }
 
@@ -57,12 +105,16 @@ pub async fn save_connection(
     app: AppHandle,
     mut config: ConnectionConfig,
     password: Option<String>,
+    ssh_secret: Option<String>,
 ) -> AppResult<ConnectionConfig> {
     if config.id.is_empty() {
         config.id = uuid::Uuid::new_v4().to_string();
     }
     if let Some(password) = password {
         connections::write_password(&config.id, &password)?;
+    }
+    if let Some(ssh_secret) = ssh_secret {
+        connections::write_ssh_secret(&config.id, &ssh_secret)?;
     }
     let mut saved_connections = connections::load_connections(&app)?;
     match saved_connections.iter_mut().find(|connection| connection.id == config.id) {
@@ -80,29 +132,34 @@ pub async fn delete_connection(
     servers: State<'_, LocalServerManager>,
     id: String,
 ) -> AppResult<()> {
-    if let Some(pool) = state.pools.write().await.remove(&id) {
-        pool.close().await;
-    }
+    state.close_session(&id).await;
     let _ = servers.stop(&id).await;
     let remaining_connections: Vec<ConnectionConfig> = connections::load_connections(&app)?
         .into_iter()
         .filter(|connection| connection.id != id)
         .collect();
     connections::store_connections(&app, &remaining_connections)?;
+    connections::delete_ssh_secret(&id)?;
     connections::delete_password(&id)
 }
 
 #[tauri::command]
-pub async fn test_connection(config: ConnectionConfig, password: Option<String>) -> AppResult<String> {
-    let resolved_password = match password {
-        Some(password) => Some(password),
-        None if !config.id.is_empty() => connections::read_password(&config.id)?,
-        None => None,
-    };
-    let pool = DbPool::connect(&config, resolved_password).await?;
+pub async fn test_connection(
+    app: AppHandle,
+    config: ConnectionConfig,
+    password: Option<String>,
+    ssh_secret: Option<String>,
+) -> AppResult<String> {
+    let resolved_password = resolve_secret(password, &config.id, connections::read_password)?;
+    let resolved_ssh_secret = resolve_secret(ssh_secret, &config.id, connections::read_ssh_secret)?;
+    let (pool, tunnel) = connect_database(&app, &config, resolved_password, resolved_ssh_secret).await?;
     let version = server_version(&pool).await;
     pool.close().await;
-    version
+    let route = if tunnel.is_some() { " (via SSH tunnel)" } else { "" };
+    if let Some(tunnel) = tunnel {
+        tunnel.close().await;
+    }
+    Ok(format!("{}{route}", version?))
 }
 
 #[tauri::command]
@@ -113,8 +170,12 @@ pub async fn open_connection(app: AppHandle, state: State<'_, AppState>, id: Str
         Some(pool) => pool,
         None => {
             let password = connections::read_password(&id)?;
-            let pool = DbPool::connect(&connection, password).await?;
+            let ssh_secret = connections::read_ssh_secret(&id)?;
+            let (pool, tunnel) = connect_database(&app, &connection, password, ssh_secret).await?;
             state.pools.write().await.insert(id.clone(), pool.clone());
+            if let Some(tunnel) = tunnel {
+                state.tunnels.write().await.insert(id.clone(), tunnel);
+            }
             pool
         }
     };
@@ -128,9 +189,7 @@ pub async fn open_connection(app: AppHandle, state: State<'_, AppState>, id: Str
 
 #[tauri::command]
 pub async fn close_connection(state: State<'_, AppState>, id: String) -> AppResult<()> {
-    if let Some(pool) = state.pools.write().await.remove(&id) {
-        pool.close().await;
-    }
+    state.close_session(&id).await;
     Ok(())
 }
 
@@ -207,9 +266,7 @@ pub async fn stop_local_server(
     servers: State<'_, LocalServerManager>,
     id: String,
 ) -> AppResult<()> {
-    if let Some(pool) = state.pools.write().await.remove(&id) {
-        pool.close().await;
-    }
+    state.close_session(&id).await;
     servers.stop(&id).await
 }
 

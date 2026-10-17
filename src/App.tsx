@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Welcome } from "./components/Welcome";
 import { Workspace } from "./components/Workspace";
 import { api } from "./lib/api";
+import { useAppZoom } from "./lib/appZoom";
 import type { OpenedConnection } from "./lib/types";
 
 const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
@@ -19,6 +20,7 @@ function useIsDarkTheme(): boolean {
 
 export default function App() {
   const isDarkTheme = useIsDarkTheme();
+  const zoomIndicatorPercent = useAppZoom();
   const [openedConnection, setOpenedConnection] = useState<OpenedConnection | null>(null);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -58,8 +60,14 @@ export default function App() {
     setOpenedConnection(null);
   };
 
-  if (openedConnection) {
-    return <Workspace key={openedConnection.connection.id} opened={openedConnection} isDarkTheme={isDarkTheme} onDisconnect={disconnect} />;
-  }
-  return <Welcome connectingId={connectingId} connectError={connectError} onConnect={connect} />;
+  return (
+    <>
+      {openedConnection ? (
+        <Workspace key={openedConnection.connection.id} opened={openedConnection} isDarkTheme={isDarkTheme} onDisconnect={disconnect} />
+      ) : (
+        <Welcome connectingId={connectingId} connectError={connectError} onConnect={connect} />
+      )}
+      {zoomIndicatorPercent !== null && <div className="zoom-indicator">{zoomIndicatorPercent}%</div>}
+    </>
+  );
 }

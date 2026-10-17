@@ -2,6 +2,7 @@ import { useState } from "react";
 import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plugin-dialog";
 import { LocalServerFields } from "./LocalServerFields";
 import { Modal } from "./Modal";
+import { SshFields } from "./SshFields";
 import { api } from "../lib/api";
 import {
   CONNECTION_TAGS,
@@ -27,6 +28,8 @@ export function ConnectionForm({ initialConfig, initialPassword, onClose, onSave
   const [config, setConfig] = useState<ConnectionConfig>(initialConfig);
   const [password, setPassword] = useState(initialPassword ?? "");
   const [isPasswordTouched, setIsPasswordTouched] = useState(initialPassword !== undefined);
+  const [sshSecret, setSshSecret] = useState("");
+  const [isSshSecretTouched, setIsSshSecretTouched] = useState(false);
   const [testStatus, setTestStatus] = useState<TestStatus>({ state: "idle" });
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -41,7 +44,7 @@ export function ConnectionForm({ initialConfig, initialPassword, onClose, onSave
     setConfig((current) => ({
       ...current,
       driver,
-      port: DEFAULT_PORTS[driver],
+      port: current.port === DEFAULT_PORTS[current.driver] || !current.port ? DEFAULT_PORTS[driver] : current.port,
       user: current.user || defaults.user,
       host: current.host || defaults.host,
     }));
@@ -50,11 +53,14 @@ export function ConnectionForm({ initialConfig, initialPassword, onClose, onSave
   const changeTag = (tag: ConnectionTag) => setConfig((current) => ({ ...current, tag, color: tagColor(tag) }));
 
   const passwordForRequest = () => (isPasswordTouched || !isExistingConnection ? password : null);
+  const sshSecretForRequest = () => (isSshSecretTouched || !isExistingConnection ? sshSecret : null);
+  const isSshEnabled = !isSqlite && (config.ssh?.isEnabled ?? false);
+  const isLocalServerEnabled = config.localServer?.isEnabled ?? false;
 
   const testConnection = async () => {
     setTestStatus({ state: "testing" });
     try {
-      const version = await api.testConnection(config, passwordForRequest());
+      const version = await api.testConnection(config, passwordForRequest(), sshSecretForRequest());
       setTestStatus({ state: "success", message: `Connection is OK. Server version: ${version}` });
     } catch (error) {
       setTestStatus({ state: "error", message: String(error) });
@@ -65,7 +71,7 @@ export function ConnectionForm({ initialConfig, initialPassword, onClose, onSave
     setSaveError(null);
     const configToSave = { ...config, name: config.name.trim() || config.database || config.host || "Untitled" };
     try {
-      const savedConfig = await api.saveConnection(configToSave, passwordForRequest());
+      const savedConfig = await api.saveConnection(configToSave, passwordForRequest(), sshSecretForRequest());
       onSaved(savedConfig, shouldConnect);
     } catch (error) {
       setSaveError(String(error));
@@ -85,6 +91,7 @@ export function ConnectionForm({ initialConfig, initialPassword, onClose, onSave
   return (
     <Modal
       title={`${isExistingConnection ? "Edit" : "New"} ${DRIVER_LABELS[config.driver]} connection`}
+      shouldCloseOnBackdrop={false}
       onClose={onClose}
       footer={
         <>
@@ -203,7 +210,22 @@ export function ConnectionForm({ initialConfig, initialPassword, onClose, onSave
           ))}
         </select>
 
-        {!isSqlite && <LocalServerFields config={config} onChange={(localServer) => updateConfig("localServer", localServer)} />}
+        {!isSqlite && !isLocalServerEnabled && (
+          <SshFields
+            ssh={config.ssh}
+            secret={sshSecret}
+            hasStoredSecret={isExistingConnection && !isSshSecretTouched}
+            onChange={(ssh) => updateConfig("ssh", ssh)}
+            onSecretChange={(secret) => {
+              setSshSecret(secret);
+              setIsSshSecretTouched(true);
+            }}
+          />
+        )}
+
+        {!isSqlite && !isSshEnabled && (
+          <LocalServerFields config={config} onChange={(localServer) => updateConfig("localServer", localServer)} />
+        )}
       </div>
 
       {testStatus.state === "success" && <p style={{ color: "var(--color-success)" }}>{testStatus.message}</p>}

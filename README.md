@@ -4,7 +4,7 @@
 
 TableMinus is the "minus" version of a modern GUI database client: fewer features, zero cost, and fully open source. It is meant for anyone who wants a simple, fast desktop tool to connect to a database, browse tables, edit rows and run SQL while trying things out — no license, no account, no telemetry.
 
-> **Status: 0.2.0 alpha.** Core workflow works, rough edges expected. Feedback and pull requests are welcome.
+> **Status: 0.3.0 alpha.** Core workflow works, rough edges expected. Feedback and pull requests are welcome.
 
 Built with Tauri 2 + React 19 + Rust (sqlx). Runs on macOS, Windows and Linux.
 
@@ -17,6 +17,7 @@ Built with Tauri 2 + React 19 + Rust (sqlx). Runs on macOS, Windows and Linux.
 ## Features
 
 - **Connections** — saved connections with environment tags (local, testing, development, staging, production) and status colors, import from URL (`postgres://…`, `mysql://…`, `sqlite://…`), test connection. Passwords are stored in the OS keychain, never in plain text.
+- **SSH tunnel** — reach a database on a remote server (VPS) through SSH with a private key, password or SSH agent, keeping the database port closed to the internet. Host keys are verified on first use and changes are blocked.
 - **Sidebar** — schema switcher, fuzzy search, tables and views, query history.
 - **Data grid** — pagination (300 rows per page), sort by column, inline editing, insert / duplicate / delete rows. Every change stays pending until you **review** the generated SQL (⌘⇧P) and **commit** it (⌘S) in a single transaction, or **discard** it (⌘⇧⌫).
 - **Filters** — row filters with 15 operators or raw SQL, column visibility filter, quick filter from any cell.
@@ -77,6 +78,7 @@ On Windows and Linux use Ctrl instead of ⌘.
 | ⌘I / ⌘D / Delete | Insert / duplicate / delete row |
 | Space | Toggle row detail panel |
 | ⌘W, ⌘[ ⌘], ⌘1–9 | Close / navigate tabs |
+| ⌘+ / ⌘− / ⌘0 | Zoom in / out / reset |
 
 ## Project structure
 
@@ -91,7 +93,7 @@ On Windows and Linux use Ctrl instead of ⌘.
 
 ## Roadmap
 
-SSH tunnels, connection groups, editing table structure from the GUI, saved favorite queries, query cancellation, foreign-key navigation, more drivers.
+Connection groups, editing table structure from the GUI, saved favorite queries, query cancellation, foreign-key navigation, more drivers.
 
 ## Contributing
 

@@ -5,6 +5,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-17 — Alpha
+
+### Added
+
+- **SSH tunnel**: connect to PostgreSQL or MySQL on a remote server (for example a VPS) through SSH, without exposing the database port to the internet.
+  - "Over SSH" section in the connection form: SSH host, port, user and authentication method.
+  - Authentication with a private key (default `~/.ssh/id_ed25519`, `id_ecdsa` or `id_rsa`, encrypted keys supported with a passphrase), password, or the SSH agent.
+  - SSH passwords and key passphrases are stored in the OS keychain.
+  - Trust-on-first-use host key verification: keys in `~/.ssh/known_hosts` are honored, new hosts are remembered in TableMinus' own known_hosts file, and a changed host key blocks the connection.
+  - The tunnel opens on connect, is shared by all queries of the connection and closes on disconnect.
+  - "Test" reports whether the SSH step or the database step failed.
+  - Connection list shows the SSH route.
+  - The private key picker opens in `~/.ssh`.
+- **Version and changelog**: the welcome screen shows the installed version; clicking it opens this changelog.
+- **Floating dialogs**: dialogs such as the connection form can be moved by dragging their title and resized from the bottom-right corner (double-click the title to reset). The connection form no longer closes when clicking outside it.
+- **Connection form**: changing the driver keeps a custom port instead of resetting it to the driver's default.
+- **Zoom**: zoom the whole app in and out with ⌘ + / ⌘ − and reset with ⌘ 0 (Ctrl on Windows/Linux). The zoom level is remembered.
+
 ## [0.2.0] - 2026-10-17 — Alpha
 
 ### Added
@@ -68,12 +86,13 @@ First public alpha release of TableMinus.
 
 ### Known limitations
 
-- No SSH tunnels or TLS configuration yet.
+- No TLS configuration yet.
 - Table structure is read-only in the GUI; use the SQL editor to alter tables.
 - Query results in the SQL editor are read-only.
 - Long-running queries cannot be cancelled yet.
 - Tested against SQLite; PostgreSQL and MySQL support has not been validated against live servers in this release.
 
-[Unreleased]: https://github.com/Guerra-09/TableMinus/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Guerra-09/TableMinus/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.1.0

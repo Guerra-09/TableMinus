@@ -16,6 +16,17 @@ export interface ServerInstallation {
   version: string;
 }
 
+export type SshAuthMethod = "key" | "password" | "agent";
+
+export interface SshConfig {
+  isEnabled: boolean;
+  host: string;
+  port: number;
+  user: string;
+  authMethod: SshAuthMethod;
+  privateKeyPath: string;
+}
+
 export type LocalServerState = "running" | "external" | "stopped";
 
 export interface LocalServerStatus {
@@ -37,6 +48,7 @@ export interface ConnectionConfig {
   color: string;
   safeMode: SafeMode;
   localServer: LocalServerConfig | null;
+  ssh: SshConfig | null;
 }
 
 export interface OpenedConnection {

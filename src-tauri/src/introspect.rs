@@ -391,6 +391,7 @@ mod tests {
             color: String::new(),
             safe_mode: String::new(),
             local_server: None,
+            ssh: None,
         };
         DbPool::connect(&config, None).await.expect("sqlite connect")
     }

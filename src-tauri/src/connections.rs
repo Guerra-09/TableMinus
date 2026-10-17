@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-use crate::{error::AppResult, local_server::LocalServerConfig};
+use crate::{error::AppResult, local_server::LocalServerConfig, ssh_tunnel::SshConfig};
 
 const KEYCHAIN_SERVICE: &str = "dev.jguerra.tableminus";
 const CONNECTIONS_FILE: &str = "connections.json";
@@ -41,6 +41,14 @@ pub struct ConnectionConfig {
     pub safe_mode: String,
     #[serde(default)]
     pub local_server: Option<LocalServerConfig>,
+    #[serde(default)]
+    pub ssh: Option<SshConfig>,
+}
+
+impl ConnectionConfig {
+    pub fn active_ssh(&self) -> Option<&SshConfig> {
+        self.ssh.as_ref().filter(|ssh| ssh.is_enabled && self.driver != Driver::Sqlite)
+    }
 }
 
 fn connections_file_path(app: &AppHandle) -> AppResult<PathBuf> {
@@ -93,4 +101,20 @@ pub fn delete_password(connection_id: &str) -> AppResult<()> {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(error) => Err(error.into()),
     }
+}
+
+fn ssh_secret_account(connection_id: &str) -> String {
+    format!("{connection_id}:ssh")
+}
+
+pub fn read_ssh_secret(connection_id: &str) -> AppResult<Option<String>> {
+    read_password(&ssh_secret_account(connection_id))
+}
+
+pub fn write_ssh_secret(connection_id: &str, secret: &str) -> AppResult<()> {
+    write_password(&ssh_secret_account(connection_id), secret)
+}
+
+pub fn delete_ssh_secret(connection_id: &str) -> AppResult<()> {
+    delete_password(&ssh_secret_account(connection_id))
 }

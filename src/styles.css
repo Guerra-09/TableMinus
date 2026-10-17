@@ -230,6 +230,83 @@ textarea:focus {
   font-weight: 600;
 }
 
+.welcome-intro {
+  position: relative;
+}
+
+.welcome-version {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: max-content;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.welcome-version:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.changelog {
+  user-select: text;
+  line-height: 1.5;
+}
+
+.changelog-release {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 15px;
+}
+
+.changelog-release:first-child {
+  margin-top: 0;
+}
+
+.changelog-section {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.changelog-item {
+  position: relative;
+  padding-left: 14px;
+  margin: 2px 0;
+}
+
+.changelog-item::before {
+  content: "•";
+  position: absolute;
+  left: 2px;
+  color: var(--color-text-muted);
+}
+
+.changelog-paragraph {
+  margin: 4px 0;
+}
+
+.changelog code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--color-bg-sidebar);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
 .welcome-actions {
   display: flex;
   flex-direction: column;
@@ -433,15 +510,39 @@ textarea:focus {
   width: min(900px, calc(100vw - 32px));
 }
 
+.modal.is-floating {
+  resize: both;
+  overflow: hidden;
+  min-width: 360px;
+  min-height: 180px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+}
+
 .modal-header {
   padding: 12px 16px;
   font-weight: 600;
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.modal-header.is-draggable {
+  cursor: grab;
+}
+
+.modal-header.is-draggable:active {
+  cursor: grabbing;
 }
 
 .modal-body {
   padding: 16px;
   overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-footer {
+  flex-shrink: 0;
 }
 
 .modal-footer {
@@ -1323,4 +1424,20 @@ textarea:focus {
   width: 100%;
   min-height: 320px;
   resize: vertical;
+}
+
+.zoom-indicator {
+  position: fixed;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  z-index: 300;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-text) 85%, transparent);
+  color: var(--color-bg);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
