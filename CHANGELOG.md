@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-17 — Alpha
+
 ### Added
 
 - **Local server manager**: start and stop a local MySQL or PostgreSQL server from the launcher, without Docker.
@@ -72,5 +74,6 @@ First public alpha release of TableMinus.
 - Long-running queries cannot be cancelled yet.
 - Tested against SQLite; PostgreSQL and MySQL support has not been validated against live servers in this release.
 
-[Unreleased]: https://github.com/Guerra-09/TableMinus/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Guerra-09/TableMinus/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.1.0
