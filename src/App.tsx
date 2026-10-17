@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { ConsoleLogPanel } from "./components/ConsoleLogPanel";
+import { McpBridge } from "./components/McpBridge";
 import { Welcome } from "./components/Welcome";
 import { Workspace } from "./components/Workspace";
 import { api } from "./lib/api";
@@ -24,6 +27,20 @@ export default function App() {
   const [openedConnection, setOpenedConnection] = useState<OpenedConnection | null>(null);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isNewConnectionRequested, setIsNewConnectionRequested] = useState(false);
+  const toggleConsole = () => setIsConsoleOpen((isOpen) => !isOpen);
+
+  useEffect(() => {
+    const handleConsoleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.code === "KeyC") {
+        event.preventDefault();
+        setIsConsoleOpen((isOpen) => !isOpen);
+      }
+    };
+    window.addEventListener("keydown", handleConsoleShortcut);
+    return () => window.removeEventListener("keydown", handleConsoleShortcut);
+  }, []);
 
   useEffect(() => {
     const preventBrowserShortcuts = (event: KeyboardEvent) => {
@@ -42,10 +59,21 @@ export default function App() {
     };
   }, []);
 
+  const openedConnectionRef = useRef<OpenedConnection | null>(null);
+  openedConnectionRef.current = openedConnection;
+
+  const startLocalServerIfStopped = async (connectionId: string) => {
+    const statuses = await api.localServerStatuses().catch(() => []);
+    if (statuses.some((status) => status.connectionId === connectionId && status.state === "stopped")) {
+      await api.startLocalServer(connectionId);
+    }
+  };
+
   const connect = async (connectionId: string) => {
     setConnectingId(connectionId);
     setConnectError(null);
     try {
+      await startLocalServerIfStopped(connectionId);
       setOpenedConnection(await api.openConnection(connectionId));
     } catch (error) {
       setConnectError(String(error));
@@ -55,19 +83,60 @@ export default function App() {
   };
 
   const disconnect = async () => {
-    if (!openedConnection) return;
-    await api.closeConnection(openedConnection.connection.id);
+    const currentConnection = openedConnectionRef.current;
+    if (!currentConnection) return;
+    await api.closeConnection(currentConnection.connection.id).catch(() => undefined);
     setOpenedConnection(null);
   };
 
+  const menuActionsRef = useRef({ connect, disconnect });
+  menuActionsRef.current = { connect, disconnect };
+
+  useEffect(() => {
+    const unlistenPromises = [
+      listen("menu-show-connections", () => menuActionsRef.current.disconnect()),
+      listen("menu-new-connection", async () => {
+        await menuActionsRef.current.disconnect();
+        setIsNewConnectionRequested(true);
+      }),
+      listen<string>("menu-open-connection", async (event) => {
+        if (openedConnectionRef.current?.connection.id === event.payload) return;
+        await menuActionsRef.current.disconnect();
+        await menuActionsRef.current.connect(event.payload);
+      }),
+    ];
+    return () => {
+      unlistenPromises.forEach((unlistenPromise) => unlistenPromise.then((unlisten) => unlisten()).catch(() => undefined));
+    };
+  }, []);
+
   return (
-    <>
-      {openedConnection ? (
-        <Workspace key={openedConnection.connection.id} opened={openedConnection} isDarkTheme={isDarkTheme} onDisconnect={disconnect} />
-      ) : (
-        <Welcome connectingId={connectingId} connectError={connectError} onConnect={connect} />
-      )}
+    <div className="app-shell">
+      <div className="app-main">
+        {openedConnection ? (
+          <Workspace
+            key={openedConnection.connection.id}
+            opened={openedConnection}
+            isDarkTheme={isDarkTheme}
+            isConsoleOpen={isConsoleOpen}
+            onToggleConsole={toggleConsole}
+            onDisconnect={disconnect}
+          />
+        ) : (
+          <Welcome
+            isNewConnectionRequested={isNewConnectionRequested}
+            onNewConnectionRequestHandled={() => setIsNewConnectionRequested(false)}
+            isConsoleOpen={isConsoleOpen}
+            onToggleConsole={toggleConsole}
+            connectingId={connectingId}
+            connectError={connectError}
+            onConnect={connect}
+          />
+        )}
+      </div>
+      {isConsoleOpen && <ConsoleLogPanel />}
+      <McpBridge />
       {zoomIndicatorPercent !== null && <div className="zoom-indicator">{zoomIndicatorPercent}%</div>}
-    </>
+    </div>
   );
 }

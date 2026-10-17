@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import packageInfo from "../../package.json";
 import { ChangelogModal } from "./ChangelogModal";
 import { ConnectionForm } from "./ConnectionForm";
+import { McpSettingsModal } from "./McpSettingsModal";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { Modal } from "./Modal";
 import { api } from "../lib/api";
@@ -10,12 +11,17 @@ import {
   CONNECTION_TAGS,
   DRIVER_SHORT_LABELS,
   LOCAL_SERVER_STATUS_POLL_MS,
+  MOD_KEY_LABEL,
   createEmptyConnection,
   describeConnection,
 } from "../lib/constants";
 import type { ConnectionConfig, LocalServerState } from "../lib/types";
 
 interface WelcomeProps {
+  isNewConnectionRequested: boolean;
+  onNewConnectionRequestHandled: () => void;
+  isConsoleOpen: boolean;
+  onToggleConsole: () => void;
   connectingId: string | null;
   connectError: string | null;
   onConnect: (connectionId: string) => void;
@@ -34,7 +40,7 @@ interface FormState {
   password?: string;
 }
 
-export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps) {
+export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandled, isConsoleOpen, onToggleConsole, connectingId, connectError, onConnect }: WelcomeProps) {
   const [connections, setConnections] = useState<ConnectionConfig[]>([]);
   const [searchText, setSearchText] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -49,6 +55,7 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
   const [serverError, setServerError] = useState<string | null>(null);
   const [serverLog, setServerLog] = useState<{ connectionName: string; content: string } | null>(null);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [isMcpSettingsOpen, setIsMcpSettingsOpen] = useState(false);
 
   const reloadConnections = useCallback(async () => {
     try {
@@ -70,6 +77,12 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
   useEffect(() => {
     reloadConnections();
   }, [reloadConnections]);
+
+  useEffect(() => {
+    if (!isNewConnectionRequested) return;
+    setFormState({ config: createEmptyConnection() });
+    onNewConnectionRequestHandled();
+  }, [isNewConnectionRequested, onNewConnectionRequestHandled]);
 
   useEffect(() => {
     refreshServerStates();
@@ -189,6 +202,12 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
           <button className="btn" onClick={() => setIsUrlImportOpen(true)}>
             Import from URL…
           </button>
+          <button className="btn" onClick={() => setIsMcpSettingsOpen(true)}>
+            AI access (MCP)…
+          </button>
+          <button className={`btn ${isConsoleOpen ? "btn-primary" : ""}`} onClick={onToggleConsole} title={`${MOD_KEY_LABEL}⇧C`}>
+            {isConsoleOpen ? "Hide console log" : "Console log"}
+          </button>
         </div>
         <button className="welcome-version" onClick={() => setIsChangelogOpen(true)} title="See what's new">
           Version {packageInfo.version} · What's new
@@ -292,6 +311,8 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
           </pre>
         </Modal>
       )}
+
+      {isMcpSettingsOpen && <McpSettingsModal onClose={() => setIsMcpSettingsOpen(false)} />}
 
       {isChangelogOpen && <ChangelogModal appVersion={packageInfo.version} onClose={() => setIsChangelogOpen(false)} />}
 

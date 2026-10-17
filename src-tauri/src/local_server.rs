@@ -576,6 +576,10 @@ mod tests {
         assert_eq!(rows[0][0].as_deref(), Some("app_db"));
         pool.execute("CREATE TABLE notes (id INT PRIMARY KEY, body TEXT)").await.unwrap();
         pool.execute("INSERT INTO notes VALUES (1, 'kept')").await.unwrap();
+        let blocked_write = pool.execute_read_only("INSERT INTO notes VALUES (2, 'blocked')", None).await;
+        assert!(blocked_write.is_err(), "read-only transaction must reject writes");
+        let read_back = pool.execute_read_only("SELECT COUNT(*) FROM notes", None).await.unwrap();
+        assert_eq!(read_back.rows[0][0], serde_json::json!(1));
         pool.close().await;
 
         manager.start(&servers_root, &config, password.clone()).await.expect("second start is a no-op");

@@ -441,6 +441,13 @@ mod tests {
         assert_eq!(update.rows_affected, 2);
         assert!(update.columns.is_empty());
 
+        let read_only_select = pool.execute_read_only("SELECT id FROM books ORDER BY id", Some(1)).await.unwrap();
+        assert_eq!(read_only_select.rows.len(), 1);
+        assert!(read_only_select.is_truncated);
+        assert!(pool.execute_read_only("DELETE FROM books", None).await.is_err(), "query_only must block writes");
+        assert_eq!(pool.execute("SELECT COUNT(*) FROM books").await.unwrap().rows[0][0], json!(2));
+        pool.execute("UPDATE books SET price = 2 WHERE id = 1").await.expect("query_only is reset after read-only use");
+
         let failing = pool
             .execute_transaction(&["DELETE FROM books".into(), "INSERT INTO missing_table VALUES (1)".into()])
             .await;

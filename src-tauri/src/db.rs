@@ -40,19 +40,26 @@ pub struct QueryResult {
     pub rows: Vec<Vec<Value>>,
     pub rows_affected: u64,
     pub duration_ms: u64,
+    pub is_truncated: bool,
 }
 
 macro_rules! collect_raw_results {
-    ($pool:expr, $sql:expr, $decode:expr) => {{
+    ($executor:expr, $sql:expr, $decode:expr, $max_rows:expr) => {{
         let mut columns: Vec<ColumnMeta> = Vec::new();
         let mut rows: Vec<Vec<Value>> = Vec::new();
         let mut rows_affected: u64 = 0;
+        let mut is_truncated = false;
+        let max_rows: Option<usize> = $max_rows;
         #[allow(deprecated)]
-        let mut stream = sqlx::raw_sql($sql).fetch_many($pool);
+        let mut stream = sqlx::Executor::fetch_many($executor, $sql);
         while let Some(item) = stream.try_next().await? {
             match item {
                 Either::Left(done) => rows_affected += done.rows_affected(),
                 Either::Right(row) => {
+                    if max_rows.is_some_and(|limit| rows.len() >= limit) {
+                        is_truncated = true;
+                        break;
+                    }
                     if columns.is_empty() {
                         columns = row
                             .columns()
@@ -67,7 +74,18 @@ macro_rules! collect_raw_results {
                 }
             }
         }
-        (columns, rows, rows_affected)
+        (columns, rows, rows_affected, is_truncated)
+    }};
+}
+
+macro_rules! collect_read_only {
+    ($pool:expr, $connection_type:ty, $sql:expr, $decode:expr, $max_rows:expr, $begin_sql:expr, $end_sql:expr) => {{
+        let mut pooled_connection = $pool.acquire().await?;
+        let connection: &mut $connection_type = &mut pooled_connection;
+        sqlx::Executor::execute(&mut *connection, $begin_sql).await?;
+        let outcome: AppResult<_> = async { Ok(collect_raw_results!(&mut *connection, $sql, $decode, $max_rows)) }.await;
+        let _ = sqlx::Executor::execute(&mut *connection, $end_sql).await;
+        outcome?
     }};
 }
 
@@ -163,17 +181,65 @@ impl DbPool {
     /// rendered as text without per-type decoders, then coerces numeric and
     /// boolean columns back into JSON scalars using the reported type name.
     pub async fn execute(&self, sql: &str) -> AppResult<QueryResult> {
+        self.execute_limited(sql, None).await
+    }
+
+    pub async fn execute_limited(&self, sql: &str, max_rows: Option<usize>) -> AppResult<QueryResult> {
         let started_at = Instant::now();
-        let (columns, rows, rows_affected) = match self {
-            Self::Postgres(pool) => collect_raw_results!(pool, sql, decode_postgres_value),
-            Self::Mysql(pool) => collect_raw_results!(pool, sql, decode_mysql_value),
-            Self::Sqlite(pool) => collect_raw_results!(pool, sql, decode_sqlite_value),
+        let (columns, rows, rows_affected, is_truncated) = match self {
+            Self::Postgres(pool) => collect_raw_results!(pool, sql, decode_postgres_value, max_rows),
+            Self::Mysql(pool) => collect_raw_results!(pool, sql, decode_mysql_value, max_rows),
+            Self::Sqlite(pool) => collect_raw_results!(pool, sql, decode_sqlite_value, max_rows),
         };
         Ok(QueryResult {
             columns,
             rows,
             rows_affected,
             duration_ms: started_at.elapsed().as_millis() as u64,
+            is_truncated,
+        })
+    }
+
+    /// Runs a statement inside a database-enforced read-only session (read-only
+    /// transaction on PostgreSQL and MySQL, `query_only` on SQLite) so that a
+    /// statement misclassified as a read still cannot modify data.
+    pub async fn execute_read_only(&self, sql: &str, max_rows: Option<usize>) -> AppResult<QueryResult> {
+        let started_at = Instant::now();
+        let (columns, rows, rows_affected, is_truncated) = match self {
+            Self::Postgres(pool) => collect_read_only!(
+                pool,
+                sqlx::PgConnection,
+                sql,
+                decode_postgres_value,
+                max_rows,
+                "BEGIN READ ONLY",
+                "ROLLBACK"
+            ),
+            Self::Mysql(pool) => collect_read_only!(
+                pool,
+                sqlx::MySqlConnection,
+                sql,
+                decode_mysql_value,
+                max_rows,
+                "START TRANSACTION READ ONLY",
+                "ROLLBACK"
+            ),
+            Self::Sqlite(pool) => collect_read_only!(
+                pool,
+                sqlx::SqliteConnection,
+                sql,
+                decode_sqlite_value,
+                max_rows,
+                "PRAGMA query_only = ON",
+                "PRAGMA query_only = OFF"
+            ),
+        };
+        Ok(QueryResult {
+            columns,
+            rows,
+            rows_affected,
+            duration_ms: started_at.elapsed().as_millis() as u64,
+            is_truncated,
         })
     }
 

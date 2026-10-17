@@ -7,6 +7,8 @@ export interface ConsoleEntry {
   kind: "data" | "meta";
   durationMs?: number;
   error?: string;
+  source?: "ai";
+  connectionName?: string;
 }
 
 const MAX_CONSOLE_ENTRIES = 1000;

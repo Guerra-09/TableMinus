@@ -67,5 +67,11 @@ Sin descompilar ni copiar código/assets. Estado: ✅ implementado · 🟡 parci
 - ✅ Import SQL dump (ejecuta script).
 - ⬜ Import CSV creando tabla nueva, backup/restore (pg_dump/mysqldump).
 
+## 7. Acceso IA (MCP) — extra de TableMinus
+- ✅ Servidor MCP local (HTTP en 127.0.0.1 + token), apagado por defecto, con ajustes en el launcher.
+- ✅ Tools: list_connections, list_tables, describe_table, run_query (1 sentencia, máx. 200 filas).
+- ✅ Producción solo lectura (transacción read-only); safe mode → diálogo de aprobación; log "AI" en consola.
+- ⬜ Binario MCP aparte (sin la app abierta); propuestas como cambios pendientes en el grid.
+
 ## Fuera de v1
 User management, metrics board, plugins, LLM plugin, Redis/Mongo/otros drivers, iOS.

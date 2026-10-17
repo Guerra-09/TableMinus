@@ -10,6 +10,7 @@ use crate::{
     error::{AppError, AppResult},
     introspect::{self, DbObject, TableStructure},
     local_server::{self, LocalServerManager, LocalServerStatus, ServerInstallation},
+    mcp::{McpManager, McpStatus},
     ssh_tunnel::SshTunnel,
 };
 
@@ -38,6 +39,22 @@ impl AppState {
             .get(connection_id)
             .cloned()
             .ok_or_else(|| AppError::Message("Connection is not open".into()))
+    }
+
+    /// Returns the open pool for a saved connection, connecting (and opening its
+    /// SSH tunnel) on first use. Shared by the UI and the MCP server.
+    pub async fn ensure_pool(&self, app: &AppHandle, connection: &ConnectionConfig) -> AppResult<DbPool> {
+        if let Some(pool) = self.pools.read().await.get(&connection.id).cloned() {
+            return Ok(pool);
+        }
+        let password = connections::read_password(&connection.id)?;
+        let ssh_secret = connections::read_ssh_secret(&connection.id)?;
+        let (pool, tunnel) = connect_database(app, connection, password, ssh_secret).await?;
+        self.pools.write().await.insert(connection.id.clone(), pool.clone());
+        if let Some(tunnel) = tunnel {
+            self.tunnels.write().await.insert(connection.id.clone(), tunnel);
+        }
+        Ok(pool)
     }
 
     async fn close_session(&self, connection_id: &str) {
@@ -122,6 +139,7 @@ pub async fn save_connection(
         None => saved_connections.push(config.clone()),
     }
     connections::store_connections(&app, &saved_connections)?;
+    let _ = crate::menu::refresh_menu(&app);
     Ok(config)
 }
 
@@ -139,6 +157,7 @@ pub async fn delete_connection(
         .filter(|connection| connection.id != id)
         .collect();
     connections::store_connections(&app, &remaining_connections)?;
+    let _ = crate::menu::refresh_menu(&app);
     connections::delete_ssh_secret(&id)?;
     connections::delete_password(&id)
 }
@@ -165,20 +184,7 @@ pub async fn test_connection(
 #[tauri::command]
 pub async fn open_connection(app: AppHandle, state: State<'_, AppState>, id: String) -> AppResult<OpenedConnection> {
     let connection = connections::find_connection(&app, &id)?;
-    let existing_pool = state.pools.read().await.get(&id).cloned();
-    let pool = match existing_pool {
-        Some(pool) => pool,
-        None => {
-            let password = connections::read_password(&id)?;
-            let ssh_secret = connections::read_ssh_secret(&id)?;
-            let (pool, tunnel) = connect_database(&app, &connection, password, ssh_secret).await?;
-            state.pools.write().await.insert(id.clone(), pool.clone());
-            if let Some(tunnel) = tunnel {
-                state.tunnels.write().await.insert(id.clone(), tunnel);
-            }
-            pool
-        }
-    };
+    let pool = state.ensure_pool(&app, &connection).await?;
     Ok(OpenedConnection {
         schemas: introspect::list_schemas(&pool).await?,
         current_schema: introspect::current_schema(&pool).await?,
@@ -274,4 +280,30 @@ pub async fn stop_local_server(
 pub async fn read_local_server_log(app: AppHandle, id: String) -> AppResult<String> {
     let connection = connections::find_connection(&app, &id)?;
     LocalServerManager::read_log(&local_server::servers_root_directory(&app)?, &connection)
+}
+
+#[tauri::command]
+pub async fn get_mcp_status(app: AppHandle, mcp: State<'_, McpManager>) -> AppResult<McpStatus> {
+    mcp.status(&app).await
+}
+
+#[tauri::command]
+pub async fn update_mcp_settings(
+    app: AppHandle,
+    mcp: State<'_, McpManager>,
+    is_enabled: bool,
+    port: u16,
+) -> AppResult<McpStatus> {
+    mcp.update_settings(&app, is_enabled, port).await
+}
+
+#[tauri::command]
+pub async fn regenerate_mcp_token(app: AppHandle, mcp: State<'_, McpManager>) -> AppResult<McpStatus> {
+    mcp.regenerate_token(&app).await
+}
+
+#[tauri::command]
+pub async fn resolve_mcp_approval(mcp: State<'_, McpManager>, id: String, is_approved: bool) -> AppResult<()> {
+    mcp.resolve_approval(&id, is_approved).await;
+    Ok(())
 }

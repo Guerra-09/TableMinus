@@ -5,6 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17 — Alpha
+
+### Added
+
+- **AI access via MCP**: TableMinus can run a local MCP server so AI assistants such as Claude Code can work with your saved connections.
+  - Off by default. Enable it from "AI access (MCP)…" on the welcome screen; it listens on 127.0.0.1 only and requires a bearer token.
+  - One-click copy of the `claude mcp add` command and of a JSON config for other MCP clients.
+  - Tools: `list_connections`, `list_tables`, `describe_table` and `run_query` (one statement per call, results limited to 200 rows).
+  - Credentials are never exposed to the assistant; it refers to connections by name.
+  - Connections tagged **Production** are read-only: writes are blocked and the assistant is told to give you the SQL to run yourself. Reads run inside a database-enforced read-only transaction.
+  - Safe mode is respected: with "confirm except SELECT/EXPLAIN" you approve every write, and with "confirm every query" you approve every statement, in a dialog inside TableMinus (unanswered requests are rejected after 3 minutes).
+  - Every statement run by the assistant appears in the console log with an **AI** badge.
+- **Connections menu**: a native "Connections" menu (macOS menu bar) with Show All Connections (⌘⇧K), New Connection… (⌘N), Open Connection ▸ (your saved connections, switching directly between them) and Close Connection. The toolbar's eject icon is now a "‹ Connections" button.
+- **Console log everywhere**: open it from the welcome screen or the "Console" button in the toolbar (⌘⇧C), even without an open connection, to follow what the AI runs.
+
 ## [0.3.0] - 2026-10-17 — Alpha
 
 ### Added
@@ -92,7 +107,8 @@ First public alpha release of TableMinus.
 - Long-running queries cannot be cancelled yet.
 - Tested against SQLite; PostgreSQL and MySQL support has not been validated against live servers in this release.
 
-[Unreleased]: https://github.com/Guerra-09/TableMinus/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Guerra-09/TableMinus/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.4.0
 [0.3.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.1.0

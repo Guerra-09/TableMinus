@@ -5,6 +5,7 @@ import type {
   DbObject,
   Driver,
   LocalServerStatus,
+  McpStatus,
   OpenedConnection,
   QueryResult,
   ServerInstallation,
@@ -68,4 +69,12 @@ export const api = {
   stopLocalServer: (id: string) => invoke<void>("stop_local_server", { id }),
 
   readLocalServerLog: (id: string) => invoke<string>("read_local_server_log", { id }),
+
+  getMcpStatus: () => invoke<McpStatus>("get_mcp_status"),
+
+  updateMcpSettings: (isEnabled: boolean, port: number) => invoke<McpStatus>("update_mcp_settings", { isEnabled, port }),
+
+  regenerateMcpToken: () => invoke<McpStatus>("regenerate_mcp_token"),
+
+  resolveMcpApproval: (id: string, isApproved: boolean) => invoke<void>("resolve_mcp_approval", { id, isApproved }),
 };

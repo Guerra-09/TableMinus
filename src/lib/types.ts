@@ -145,3 +145,31 @@ export interface SortState {
   column: string;
   direction: SortDirection;
 }
+
+export interface McpSettings {
+  isEnabled: boolean;
+  port: number;
+  token: string;
+}
+
+export interface McpStatus {
+  settings: McpSettings;
+  isRunning: boolean;
+  endpoint: string;
+  lastError: string | null;
+}
+
+export interface McpApprovalRequest {
+  id: string;
+  connectionName: string;
+  tag: string;
+  sql: string;
+  reason: string;
+}
+
+export interface McpActivity {
+  connectionName: string;
+  sql: string;
+  durationMs: number | null;
+  error: string | null;
+}

@@ -191,6 +191,19 @@ textarea:focus {
   background: var(--color-accent);
 }
 
+/* App shell */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+}
+
 /* Welcome */
 
 .welcome {
@@ -1440,4 +1453,25 @@ textarea:focus {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+}
+
+.console-entry-ai {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-ui);
+}
+
+.mcp-settings .code-block {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.mcp-settings .changelog-section {
+  margin-top: 18px;
 }

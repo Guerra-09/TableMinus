@@ -4,7 +4,7 @@
 
 TableMinus is the "minus" version of a modern GUI database client: fewer features, zero cost, and fully open source. It is meant for anyone who wants a simple, fast desktop tool to connect to a database, browse tables, edit rows and run SQL while trying things out — no license, no account, no telemetry.
 
-> **Status: 0.3.0 alpha.** Core workflow works, rough edges expected. Feedback and pull requests are welcome.
+> **Status: 0.4.0 alpha.** Core workflow works, rough edges expected. Feedback and pull requests are welcome.
 
 Built with Tauri 2 + React 19 + Rust (sqlx). Runs on macOS, Windows and Linux.
 
@@ -18,6 +18,7 @@ Built with Tauri 2 + React 19 + Rust (sqlx). Runs on macOS, Windows and Linux.
 
 - **Connections** — saved connections with environment tags (local, testing, development, staging, production) and status colors, import from URL (`postgres://…`, `mysql://…`, `sqlite://…`), test connection. Passwords are stored in the OS keychain, never in plain text.
 - **SSH tunnel** — reach a database on a remote server (VPS) through SSH with a private key, password or SSH agent, keeping the database port closed to the internet. Host keys are verified on first use and changes are blocked.
+- **AI access (MCP)** — let Claude Code or any MCP client query your saved connections through a local, token-protected MCP server. Production connections stay read-only, writes follow each connection's safe mode with an approval dialog, and credentials never leave TableMinus.
 - **Sidebar** — schema switcher, fuzzy search, tables and views, query history.
 - **Data grid** — pagination (300 rows per page), sort by column, inline editing, insert / duplicate / delete rows. Every change stays pending until you **review** the generated SQL (⌘⇧P) and **commit** it (⌘S) in a single transaction, or **discard** it (⌘⇧⌫).
 - **Filters** — row filters with 15 operators or raw SQL, column visibility filter, quick filter from any cell.
@@ -58,6 +59,24 @@ npm run tauri build
 cd src-tauri
 cargo test
 ```
+
+## AI access (MCP)
+
+1. In TableMinus, open **AI access (MCP)…** on the welcome screen and enable the server.
+2. Copy the command shown there and run it once, for example:
+
+   ```bash
+   claude mcp add --scope user --transport http tableminus http://127.0.0.1:47821/mcp --header "Authorization: Bearer <token>"
+   ```
+
+3. Keep TableMinus open and ask your assistant things like *"list my connections and check the orders table in Argentus dev"*.
+
+| Connection | Reads | Writes |
+| --- | --- | --- |
+| Tag Production | Allowed (read-only transaction) | Blocked — the assistant gives you the SQL |
+| Safe mode Silent | Allowed | Allowed |
+| Safe mode "confirm except SELECT/EXPLAIN" | Allowed | Approved by you in TableMinus |
+| Safe mode "confirm every query" | Approved by you | Approved by you |
 
 ## Keyboard shortcuts
 

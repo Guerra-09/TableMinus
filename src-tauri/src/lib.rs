@@ -4,6 +4,8 @@ mod db;
 mod error;
 mod introspect;
 mod local_server;
+mod mcp;
+mod menu;
 mod ssh_tunnel;
 
 use tauri::{Manager, RunEvent};
@@ -15,6 +17,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(commands::AppState::default())
         .manage(local_server::LocalServerManager::default())
+        .manage(mcp::McpManager::default())
+        .on_menu_event(menu::handle_menu_event)
+        .setup(|app| {
+            let _ = menu::refresh_menu(app.handle());
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mcp_manager = app_handle.state::<mcp::McpManager>();
+                let _ = mcp_manager.apply(&app_handle).await;
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::list_connections,
             commands::save_connection,
@@ -34,13 +47,21 @@ pub fn run() {
             commands::start_local_server,
             commands::stop_local_server,
             commands::read_local_server_log,
+            commands::get_mcp_status,
+            commands::update_mcp_settings,
+            commands::regenerate_mcp_token,
+            commands::resolve_mcp_approval,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
             if let RunEvent::Exit = event {
                 let servers = app.state::<local_server::LocalServerManager>();
-                tauri::async_runtime::block_on(servers.stop_all());
+                let mcp_manager = app.state::<mcp::McpManager>();
+                tauri::async_runtime::block_on(async {
+                    mcp_manager.stop().await;
+                    servers.stop_all().await;
+                });
             }
         });
 }

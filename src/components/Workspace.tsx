@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ConsoleLogPanel } from "./ConsoleLogPanel";
 import { Modal } from "./Modal";
 import { OpenAnything, type OpenAnythingItem } from "./OpenAnything";
 import { QueryEditor } from "./QueryEditor";
@@ -19,6 +18,8 @@ type WorkspaceTab =
   | { id: string; kind: "query"; title: string; initialSql: string };
 
 interface WorkspaceProps {
+  isConsoleOpen: boolean;
+  onToggleConsole: () => void;
   opened: OpenedConnection;
   isDarkTheme: boolean;
   onDisconnect: () => void;
@@ -44,7 +45,7 @@ function writeStoredHistory(connectionId: string, history: QueryHistoryEntry[]) 
   }
 }
 
-export function Workspace({ opened, isDarkTheme, onDisconnect }: WorkspaceProps) {
+export function Workspace({ opened, isDarkTheme, isConsoleOpen, onToggleConsole, onDisconnect }: WorkspaceProps) {
   const connectionId = opened.connection.id;
   const driver = opened.connection.driver;
   const [connection, setConnection] = useState(opened.connection);
@@ -56,7 +57,6 @@ export function Workspace({ opened, isDarkTheme, onDisconnect }: WorkspaceProps)
   const [tabs, setTabs] = useState<WorkspaceTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [isOpenAnythingOpen, setIsOpenAnythingOpen] = useState(false);
   const [previewStatements, setPreviewStatements] = useState<string[] | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -230,7 +230,6 @@ export function Workspace({ opened, isDarkTheme, onDisconnect }: WorkspaceProps)
     if (event.key === "Enter" && !event.shiftKey && activeTab?.kind !== "query") return runShortcut(() => openQueryEditor());
     if (key === "w" && !event.shiftKey) return runShortcut(() => activeTabId && closeTab(activeTabId));
     if (key === "r" && !event.shiftKey) return runShortcut(reloadWorkspace);
-    if (key === "c" && event.shiftKey) return runShortcut(() => setIsConsoleOpen((isOpen) => !isOpen));
     if ((event.key === "[" || event.key === "]") && !event.shiftKey && !event.altKey) {
       return runShortcut(() => {
         const activeIndex = tabs.findIndex((tab) => tab.id === activeTabId);
@@ -309,14 +308,14 @@ export function Workspace({ opened, isDarkTheme, onDisconnect }: WorkspaceProps)
               SQL
             </button>
             <button
-              className={`icon-btn ${isConsoleOpen ? "is-active" : ""}`}
+              className={`btn btn-small ${isConsoleOpen ? "btn-primary" : ""}`}
               title={`Console log (${MOD_KEY_LABEL}⇧C)`}
-              onClick={() => setIsConsoleOpen((isOpen) => !isOpen)}
+              onClick={onToggleConsole}
             >
-              ≡
+              Console
             </button>
-            <button className="icon-btn" title="Disconnect" onClick={onDisconnect}>
-              ⏏
+            <button className="btn btn-small" title={`Close this connection and show all connections (${MOD_KEY_LABEL}⇧K)`} onClick={onDisconnect}>
+              ‹ Connections
             </button>
           </div>
         </div>
@@ -374,7 +373,6 @@ export function Workspace({ opened, isDarkTheme, onDisconnect }: WorkspaceProps)
               ))
             )}
 
-            {isConsoleOpen && <ConsoleLogPanel />}
           </div>
         </div>
       </div>

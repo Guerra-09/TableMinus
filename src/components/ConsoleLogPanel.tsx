@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { clearConsoleLog, useConsoleEntries } from "../lib/consoleLog";
 
-type ConsoleFilter = "all" | "data" | "meta";
+type ConsoleFilter = "all" | "data" | "meta" | "ai";
 
 export function ConsoleLogPanel() {
   const entries = useConsoleEntries();
   const [consoleFilter, setConsoleFilter] = useState<ConsoleFilter>("all");
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  const visibleEntries = entries.filter((entry) => consoleFilter === "all" || entry.kind === consoleFilter);
+  const visibleEntries = entries.filter((entry) => {
+    if (consoleFilter === "all") return true;
+    if (consoleFilter === "ai") return entry.source === "ai";
+    return entry.kind === consoleFilter;
+  });
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
@@ -22,6 +26,7 @@ export function ConsoleLogPanel() {
           <option value="all">All queries</option>
           <option value="data">Data queries only</option>
           <option value="meta">Meta queries only</option>
+          <option value="ai">AI (MCP) queries only</option>
         </select>
         <button className="btn btn-small" onClick={clearConsoleLog}>
           Clear
@@ -34,6 +39,11 @@ export function ConsoleLogPanel() {
               {entry.timestamp.toLocaleTimeString()}
               {entry.durationMs !== undefined ? ` (${entry.durationMs} ms)` : ""}
             </span>
+            {entry.source === "ai" && (
+              <span className="console-entry-ai" title={`Executed by AI via MCP on ${entry.connectionName ?? ""}`}>
+                AI{entry.connectionName ? ` · ${entry.connectionName}` : ""}
+              </span>
+            )}
             {entry.sql}
             {entry.error ? `\n  → ${entry.error}` : ""}
           </div>
