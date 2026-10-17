@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plugin-dialog";
+import { LocalServerFields } from "./LocalServerFields";
 import { Modal } from "./Modal";
 import { api } from "../lib/api";
 import {
@@ -201,6 +202,8 @@ export function ConnectionForm({ initialConfig, initialPassword, onClose, onSave
             </option>
           ))}
         </select>
+
+        {!isSqlite && <LocalServerFields config={config} onChange={(localServer) => updateConfig("localServer", localServer)} />}
       </div>
 
       {testStatus.state === "success" && <p style={{ color: "var(--color-success)" }}>{testStatus.message}</p>}

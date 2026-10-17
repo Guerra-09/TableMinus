@@ -3,6 +3,18 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Local server manager**: start and stop a local MySQL or PostgreSQL server from the launcher, without Docker.
+  - Per-connection "Local server" option with auto-detected installations (Homebrew, Postgres.app, system) or a custom bin folder.
+  - The first start initializes a new data directory and creates the connection's user, password and database.
+  - ▶ / ■ button and status dot in the connection list; "Port busy" when another process (for example Docker) owns the port.
+  - Connecting to a stopped local server starts it first.
+  - Server log viewer from the connection context menu.
+  - Servers listen on 127.0.0.1 only and are stopped when TableMinus quits.
+
 ## [0.1.0] - 2026-10-17 — Alpha
 
 First public alpha release of TableMinus.
@@ -60,4 +72,5 @@ First public alpha release of TableMinus.
 - Long-running queries cannot be cancelled yet.
 - Tested against SQLite; PostgreSQL and MySQL support has not been validated against live servers in this release.
 
+[Unreleased]: https://github.com/Guerra-09/TableMinus/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Guerra-09/TableMinus/releases/tag/v0.1.0

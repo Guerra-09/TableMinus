@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { logQuery } from "./consoleLog";
-import type { ConnectionConfig, DbObject, OpenedConnection, QueryResult, TableStructure } from "./types";
+import type {
+  ConnectionConfig,
+  DbObject,
+  Driver,
+  LocalServerStatus,
+  OpenedConnection,
+  QueryResult,
+  ServerInstallation,
+  TableStructure,
+} from "./types";
 
 export const api = {
   listConnections: () => invoke<ConnectionConfig[]>("list_connections"),
@@ -49,4 +58,14 @@ export const api = {
   readTextFile: (path: string) => invoke<string>("read_text_file", { path }),
 
   writeTextFile: (path: string, content: string) => invoke<void>("write_text_file", { path, content }),
+
+  detectServerInstallations: (driver: Driver) => invoke<ServerInstallation[]>("detect_server_installations", { driver }),
+
+  localServerStatuses: () => invoke<LocalServerStatus[]>("local_server_statuses"),
+
+  startLocalServer: (id: string) => invoke<void>("start_local_server", { id }),
+
+  stopLocalServer: (id: string) => invoke<void>("stop_local_server", { id }),
+
+  readLocalServerLog: (id: string) => invoke<string>("read_local_server_log", { id }),
 };

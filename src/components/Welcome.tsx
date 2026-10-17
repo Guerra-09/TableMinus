@@ -4,14 +4,28 @@ import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { Modal } from "./Modal";
 import { api } from "../lib/api";
 import { buildConnectionUrl, parseConnectionUrl } from "../lib/connectionUrl";
-import { CONNECTION_TAGS, DRIVER_SHORT_LABELS, createEmptyConnection, describeConnection } from "../lib/constants";
-import type { ConnectionConfig } from "../lib/types";
+import {
+  CONNECTION_TAGS,
+  DRIVER_SHORT_LABELS,
+  LOCAL_SERVER_STATUS_POLL_MS,
+  createEmptyConnection,
+  describeConnection,
+} from "../lib/constants";
+import type { ConnectionConfig, LocalServerState } from "../lib/types";
 
 interface WelcomeProps {
   connectingId: string | null;
   connectError: string | null;
   onConnect: (connectionId: string) => void;
 }
+
+type ServerTransition = "starting" | "stopping";
+
+const SERVER_STATE_LABELS: Record<LocalServerState, string> = {
+  running: "Local server running",
+  external: "Port in use by another process (Docker or another server)",
+  stopped: "Local server stopped",
+};
 
 interface FormState {
   config: ConnectionConfig;
@@ -28,6 +42,10 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
   const [urlError, setUrlError] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [serverStates, setServerStates] = useState<Record<string, LocalServerState>>({});
+  const [serverTransitions, setServerTransitions] = useState<Record<string, ServerTransition>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverLog, setServerLog] = useState<{ connectionName: string; content: string } | null>(null);
 
   const reloadConnections = useCallback(async () => {
     try {
@@ -37,9 +55,56 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
     }
   }, []);
 
+  const refreshServerStates = useCallback(async () => {
+    try {
+      const statuses = await api.localServerStatuses();
+      setServerStates(Object.fromEntries(statuses.map((status) => [status.connectionId, status.state])));
+    } catch {
+      setServerStates({});
+    }
+  }, []);
+
   useEffect(() => {
     reloadConnections();
   }, [reloadConnections]);
+
+  useEffect(() => {
+    refreshServerStates();
+    const pollTimer = window.setInterval(refreshServerStates, LOCAL_SERVER_STATUS_POLL_MS);
+    return () => window.clearInterval(pollTimer);
+  }, [refreshServerStates, connections]);
+
+  const runServerTransition = async (connection: ConnectionConfig, transition: ServerTransition) => {
+    setServerError(null);
+    setServerTransitions((current) => ({ ...current, [connection.id]: transition }));
+    try {
+      if (transition === "starting") await api.startLocalServer(connection.id);
+      else await api.stopLocalServer(connection.id);
+      await refreshServerStates();
+      return true;
+    } catch (error) {
+      setServerError(`${connection.name}: ${String(error)}`);
+      return false;
+    } finally {
+      setServerTransitions(({ [connection.id]: _finished, ...remaining }) => remaining);
+    }
+  };
+
+  const showServerLog = async (connection: ConnectionConfig) => {
+    try {
+      setServerLog({ connectionName: connection.name, content: (await api.readLocalServerLog(connection.id)) || "(empty log)" });
+    } catch (error) {
+      setServerError(String(error));
+    }
+  };
+
+  const connectWithLocalServer = async (connection: ConnectionConfig) => {
+    if (connection.localServer?.isEnabled && serverStates[connection.id] === "stopped") {
+      const didStart = await runServerTransition(connection, "starting");
+      if (!didStart) return;
+    }
+    onConnect(connection.id);
+  };
 
   const filteredConnections = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
@@ -80,7 +145,22 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
       x: event.clientX,
       y: event.clientY,
       entries: [
-        { label: "Connect", onSelect: () => onConnect(connection.id) },
+        { label: "Connect", onSelect: () => connectWithLocalServer(connection) },
+        ...(connection.localServer?.isEnabled
+          ? [
+              {
+                label: "Start local server",
+                isDisabled: serverStates[connection.id] !== "stopped",
+                onSelect: () => runServerTransition(connection, "starting"),
+              },
+              {
+                label: "Stop local server",
+                isDisabled: serverStates[connection.id] !== "running",
+                onSelect: () => runServerTransition(connection, "stopping"),
+              },
+              { label: "View server log…", onSelect: () => showServerLog(connection) },
+            ]
+          : []),
         { label: "Edit…", onSelect: () => setFormState({ config: connection }) },
         {
           label: "Duplicate",
@@ -115,6 +195,7 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
         </div>
         {loadError && <div className="inline-error error-text">{loadError}</div>}
         {connectError && <div className="inline-error error-text">{connectError}</div>}
+        {serverError && <div className="inline-error error-text">{serverError}</div>}
         <div className="connection-list">
           {filteredConnections.length === 0 ? (
             <div className="empty-state">
@@ -131,7 +212,7 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
                   key={connection.id}
                   className={`connection-item ${selectedId === connection.id ? "is-selected" : ""}`}
                   onClick={() => setSelectedId(connection.id)}
-                  onDoubleClick={() => onConnect(connection.id)}
+                  onDoubleClick={() => connectWithLocalServer(connection)}
                   onContextMenu={(event) => openConnectionMenu(event, connection)}
                 >
                   <div className={`driver-icon driver-${connection.driver}`}>{DRIVER_SHORT_LABELS[connection.driver]}</div>
@@ -147,6 +228,14 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
                     <div className="connection-detail muted">{describeConnection(connection)}</div>
                   </div>
                   {connectingId === connection.id && <span className="muted">Connecting…</span>}
+                  {connection.localServer?.isEnabled && (
+                    <LocalServerControl
+                      state={serverStates[connection.id]}
+                      transition={serverTransitions[connection.id]}
+                      onStart={() => runServerTransition(connection, "starting")}
+                      onStop={() => runServerTransition(connection, "stopping")}
+                    />
+                  )}
                 </div>
               );
             })
@@ -190,7 +279,45 @@ export function Welcome({ connectingId, connectError, onConnect }: WelcomeProps)
         </Modal>
       )}
 
+      {serverLog && (
+        <Modal title={`Server log — ${serverLog.connectionName}`} isWide onClose={() => setServerLog(null)}>
+          <pre className="code-block" style={{ maxHeight: "60vh" }}>
+            {serverLog.content}
+          </pre>
+        </Modal>
+      )}
+
       {contextMenu && <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />}
+    </div>
+  );
+}
+
+interface LocalServerControlProps {
+  state: LocalServerState | undefined;
+  transition: ServerTransition | undefined;
+  onStart: () => void;
+  onStop: () => void;
+}
+
+function LocalServerControl({ state, transition, onStart, onStop }: LocalServerControlProps) {
+  const displayState = state ?? "stopped";
+  const title = transition === "starting" ? "Starting server…" : transition === "stopping" ? "Stopping server…" : SERVER_STATE_LABELS[displayState];
+  return (
+    <div className="server-control" title={title} onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+      <span className={`server-dot is-${transition ? "busy" : displayState}`} />
+      {transition ? (
+        <span className="server-control-label">{transition === "starting" ? "Starting…" : "Stopping…"}</span>
+      ) : displayState === "running" ? (
+        <button className="server-button" onClick={onStop} aria-label="Stop local server">
+          ■
+        </button>
+      ) : displayState === "stopped" ? (
+        <button className="server-button" onClick={onStart} aria-label="Start local server">
+          ▶
+        </button>
+      ) : (
+        <span className="server-control-label">Port busy</span>
+      )}
     </div>
   );
 }

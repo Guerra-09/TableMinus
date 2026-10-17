@@ -9,6 +9,7 @@ use crate::{
     db::{DbPool, QueryResult},
     error::{AppError, AppResult},
     introspect::{self, DbObject, TableStructure},
+    local_server::{self, LocalServerManager, LocalServerStatus, ServerInstallation},
 };
 
 #[derive(Default)]
@@ -73,10 +74,16 @@ pub async fn save_connection(
 }
 
 #[tauri::command]
-pub async fn delete_connection(app: AppHandle, state: State<'_, AppState>, id: String) -> AppResult<()> {
+pub async fn delete_connection(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    servers: State<'_, LocalServerManager>,
+    id: String,
+) -> AppResult<()> {
     if let Some(pool) = state.pools.write().await.remove(&id) {
         pool.close().await;
     }
+    let _ = servers.stop(&id).await;
     let remaining_connections: Vec<ConnectionConfig> = connections::load_connections(&app)?
         .into_iter()
         .filter(|connection| connection.id != id)
@@ -169,4 +176,45 @@ pub async fn read_text_file(path: String) -> AppResult<String> {
 #[tauri::command]
 pub async fn write_text_file(path: String, content: String) -> AppResult<()> {
     Ok(tokio::fs::write(path, content).await?)
+}
+
+#[tauri::command]
+pub async fn detect_server_installations(driver: Driver) -> AppResult<Vec<ServerInstallation>> {
+    Ok(tauri::async_runtime::spawn_blocking(move || local_server::detect_installations(driver))
+        .await
+        .map_err(|error| AppError::Message(error.to_string()))?)
+}
+
+#[tauri::command]
+pub async fn local_server_statuses(
+    app: AppHandle,
+    servers: State<'_, LocalServerManager>,
+) -> AppResult<Vec<LocalServerStatus>> {
+    let saved_connections = connections::load_connections(&app)?;
+    Ok(servers.statuses(&saved_connections).await)
+}
+
+#[tauri::command]
+pub async fn start_local_server(app: AppHandle, servers: State<'_, LocalServerManager>, id: String) -> AppResult<()> {
+    let connection = connections::find_connection(&app, &id)?;
+    let password = connections::read_password(&id)?;
+    servers.start(&local_server::servers_root_directory(&app)?, &connection, password).await
+}
+
+#[tauri::command]
+pub async fn stop_local_server(
+    state: State<'_, AppState>,
+    servers: State<'_, LocalServerManager>,
+    id: String,
+) -> AppResult<()> {
+    if let Some(pool) = state.pools.write().await.remove(&id) {
+        pool.close().await;
+    }
+    servers.stop(&id).await
+}
+
+#[tauri::command]
+pub async fn read_local_server_log(app: AppHandle, id: String) -> AppResult<String> {
+    let connection = connections::find_connection(&app, &id)?;
+    LocalServerManager::read_log(&local_server::servers_root_directory(&app)?, &connection)
 }

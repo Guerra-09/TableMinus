@@ -4,6 +4,26 @@ export type ConnectionTag = "local" | "testing" | "development" | "staging" | "p
 
 export type SafeMode = "silent" | "alert" | "alert-writes";
 
+export interface LocalServerConfig {
+  isEnabled: boolean;
+  binDir: string;
+  dataDir: string;
+}
+
+export interface ServerInstallation {
+  label: string;
+  binDir: string;
+  version: string;
+}
+
+export type LocalServerState = "running" | "external" | "stopped";
+
+export interface LocalServerStatus {
+  connectionId: string;
+  state: LocalServerState;
+  pid: number | null;
+}
+
 export interface ConnectionConfig {
   id: string;
   name: string;
@@ -16,6 +36,7 @@ export interface ConnectionConfig {
   tag: ConnectionTag;
   color: string;
   safeMode: SafeMode;
+  localServer: LocalServerConfig | null;
 }
 
 export interface OpenedConnection {

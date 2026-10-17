@@ -37,6 +37,10 @@ export const SAFE_MODE_LABELS: Record<SafeMode, string> = {
 
 export const DEFAULT_PAGE_SIZE = 300;
 
+export const LOCAL_SERVER_HOSTS = ["127.0.0.1", "localhost", "::1"];
+
+export const LOCAL_SERVER_STATUS_POLL_MS = 3000;
+
 export const MAX_RESULT_TABS = 100;
 
 export function tagColor(tag: ConnectionTag): string {
@@ -56,6 +60,7 @@ export function createEmptyConnection(driver: Driver = "postgres"): ConnectionCo
     tag: "local",
     color: tagColor("local"),
     safeMode: "silent",
+    localServer: null,
   };
 }
 

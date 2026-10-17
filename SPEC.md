@@ -14,6 +14,7 @@ Sin descompilar ni copiar código/assets. Estado: ✅ implementado · 🟡 parci
 - ✅ Password en el keychain del SO (no en el JSON).
 - ⬜ Grupos de conexiones (drag & drop), export/import de conexiones con password.
 - ⬜ SSH tunnel, TLS mode.
+- ✅ Servidor local gestionado (MySQL/PostgreSQL): botón ▶/■ en el launcher, detección de instalaciones Homebrew, inicialización + usuario/DB en primer arranque, log, parada al salir. (Extra de TableMinus, inspirado en DBngin.)
 - ⬜ Deeplink / CLI (`open -a … "postgresql://…?table=…&column=…&operation=…"`).
 
 ## 2. Workspace / Interfaz

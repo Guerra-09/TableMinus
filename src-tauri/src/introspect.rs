@@ -390,6 +390,7 @@ mod tests {
             tag: String::new(),
             color: String::new(),
             safe_mode: String::new(),
+            local_server: None,
         };
         DbPool::connect(&config, None).await.expect("sqlite connect")
     }

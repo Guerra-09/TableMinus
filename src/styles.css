@@ -344,6 +344,67 @@ textarea:focus {
   color: var(--color-text-muted);
 }
 
+.server-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.server-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-null);
+}
+
+.server-dot.is-running {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 25%, transparent);
+}
+
+.server-dot.is-external {
+  background: #e67700;
+}
+
+.server-dot.is-busy {
+  background: var(--color-accent);
+  animation: server-dot-pulse 1s ease-in-out infinite;
+}
+
+@keyframes server-dot-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.server-button {
+  width: 26px;
+  height: 22px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 5px;
+  background: var(--color-bg);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.server-button:hover {
+  background: var(--color-bg-hover);
+}
+
+.connection-item.is-selected .server-button {
+  color: var(--color-text);
+}
+
+.server-control-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.connection-item.is-selected .server-control-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 /* Modal */
 
 .modal-backdrop {

@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-use crate::error::AppResult;
+use crate::{error::AppResult, local_server::LocalServerConfig};
 
 const KEYCHAIN_SERVICE: &str = "dev.jguerra.tableminus";
 const CONNECTIONS_FILE: &str = "connections.json";
@@ -39,6 +39,8 @@ pub struct ConnectionConfig {
     pub color: String,
     #[serde(default)]
     pub safe_mode: String,
+    #[serde(default)]
+    pub local_server: Option<LocalServerConfig>,
 }
 
 fn connections_file_path(app: &AppHandle) -> AppResult<PathBuf> {

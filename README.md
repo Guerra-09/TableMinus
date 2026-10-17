@@ -23,6 +23,7 @@ Built with Tauri 2 + React 19 + Rust (sqlx). Runs on macOS, Windows and Linux.
 - **Structure** — columns, indexes, foreign keys and the `CREATE` definition.
 - **SQL editor** — syntax highlighting, autocomplete for tables and columns, run current statement (⌘⏎) or all (⌘⇧⏎), one result tab per statement, beautify / uglify, open and save `.sql` files.
 - **Import / export** — export to CSV, JSON, SQL `INSERT` or Markdown; import CSV into a table; run a SQL dump file.
+- **Local servers without Docker** — start and stop a local MySQL or PostgreSQL server with one click from the connection list. TableMinus detects Homebrew / Postgres.app installations, creates the data folder, user and database on first start, and stops the server when you quit. A native server uses a fraction of the memory of a Docker VM.
 - **Safety** — safe mode that asks for confirmation before every query, or before every write.
 - **Productivity** — tabs, Open Anything (⌘P), console log of every query (⌘⇧C), Quick Look for long / JSON values, row detail panel (Space).
 
