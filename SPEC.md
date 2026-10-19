@@ -21,6 +21,7 @@ Sin descompilar ni copiar código/assets. Estado: ✅ implementado · 🟡 parci
 ## 2. Workspace / Interfaz
 - ✅ Toolbar: Discard (⌘⇧⌫), Preview SQL (⌘⇧P), Commit (⌘S), status bar con color/tag de conexión, Refresh (⌘R).
 - ✅ Left sidebar: selector de schema (abajo), búsqueda fuzzy, secciones Tables / Views, History.
+- ✅ Selección múltiple en el sidebar (⌘A, ⌘clic, ⇧clic) con Truncate / Drop masivo de los objetos seleccionados.
 - ✅ Tabs múltiples: abrir objeto reemplaza tab actual si no está modificado; ⌘T nuevo tab, ⌘W cerrar.
 - ✅ Console log (⌘⇧C): registra todas las queries ejecutadas (meta + data).
 - ✅ Open Anything (⌘P): búsqueda fuzzy de tablas/vistas/schemas.
@@ -33,6 +34,7 @@ Sin descompilar ni copiar código/assets. Estado: ✅ implementado · 🟡 parci
 - ✅ Sort por clic en header: desc → asc → sin orden.
 - ✅ Edición inline (doble clic); cambios quedan pendientes (celda resaltada) hasta Commit.
 - ✅ Insertar fila (+ Row / ⌘I), duplicar (⌘D), borrar (Delete) → pendientes.
+- ✅ Seleccionar todas las filas de la página actual (⌘A) para borrarlas en bloque.
 - ✅ Code review: Preview muestra UPDATE/INSERT/DELETE generados; Commit ejecuta en transacción; Discard revierte.
 - ✅ Row filters (⌘F): columna + operador (=, <>, <, >, <=, >=, IN, NOT IN, IS NULL, IS NOT NULL, BETWEEN, Contains, Not contains, Begins with, Ends with) + valor; múltiples filtros con checkbox; Apply individual, Apply all (⌘⏎), Unset, botón SQL; opción Raw SQL.
 - ✅ Column filter (⌘⌥F): mostrar sólo columnas seleccionadas.
@@ -49,6 +51,7 @@ Sin descompilar ni copiar código/assets. Estado: ✅ implementado · 🟡 parci
 - ✅ Definition: CREATE TABLE (Postgres reconstruido, MySQL `SHOW CREATE TABLE`, SQLite `sqlite_master`).
 - ⬜ Editar estructura vía GUI (add/edit/delete column, índices) con commit.
 - ✅ Truncate / Drop table desde menú contextual del sidebar (con confirmación, ejecución inmediata).
+- ✅ Opción para ignorar claves foráneas en Truncate / Drop (checkbox “Ignore FKs” y acciones `(ignore FKs)`): CASCADE en PostgreSQL, FOREIGN_KEY_CHECKS=0 en MySQL y PRAGMA foreign_keys=OFF en SQLite, restaurando la configuración al terminar.
 
 ## 5. Editor SQL
 - ✅ Abrir con ⌘E / ⌘⏎ desde sidebar; editor CodeMirror con highlight SQL.

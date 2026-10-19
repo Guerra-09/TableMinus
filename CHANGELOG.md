@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Multi-select in the sidebar**: press ⌘A (Ctrl+A) after clicking a table to select every visible item, or use ⌘-click / Shift-click to select a range. A selection bar then offers **Truncate…** (empty the selected tables) and **Drop…** (delete the selected tables/views), with a confirmation listing the affected objects. Dropped objects also close their open tabs.
+- **Select all rows with ⌘A**: with the data grid focused, ⌘A selects every row on the current page so they can be deleted in bulk.
+- **Ignore foreign key checks**: Truncate and Drop can now run without foreign key enforcement, like TablePlus. Use the **Ignore FKs** checkbox in the multi-selection bar or the `(ignore FKs)` actions in the table context menu. PostgreSQL uses `CASCADE`; MySQL disables `FOREIGN_KEY_CHECKS` for the connection and SQLite disables `PRAGMA foreign_keys`, restoring the setting afterwards.
+
 ## [0.4.0] - 2026-10-17 — Alpha
 
 ### Added
