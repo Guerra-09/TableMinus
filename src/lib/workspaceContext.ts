@@ -26,6 +26,7 @@ export interface WorkspaceContextValue {
   openTable: (table: TableRef, options?: { isNewTab?: boolean; view?: "data" | "structure" }) => void;
   openQueryEditor: (initialSql?: string) => void;
   reloadObjects: () => Promise<void>;
+  closeTabsForObjects: (schema: string, tableNames: string[]) => void;
   addHistoryEntry: (sql: string) => void;
   removeHistoryEntry: (id: string) => void;
   clearHistory: () => void;

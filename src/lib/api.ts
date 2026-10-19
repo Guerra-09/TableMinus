@@ -56,6 +56,17 @@ export const api = {
     }
   },
 
+  executeTransactionIgnoringForeignKeys: async (id: string, statements: string[]) => {
+    try {
+      const rowsAffected = await invoke<number>("execute_transaction_ignoring_foreign_keys", { id, statements });
+      statements.forEach((sql) => logQuery({ sql, kind: "data" }));
+      return rowsAffected;
+    } catch (error) {
+      logQuery({ sql: statements.join(";\n"), kind: "data", error: String(error) });
+      throw error;
+    }
+  },
+
   readTextFile: (path: string) => invoke<string>("read_text_file", { path }),
 
   writeTextFile: (path: string, content: string) => invoke<void>("write_text_file", { path, content }),

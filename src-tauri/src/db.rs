@@ -251,6 +251,22 @@ impl DbPool {
         })
     }
 
+    /// Runs statements with foreign key enforcement disabled. PostgreSQL has no
+    /// session-level switch, so callers must add `CASCADE` to the statements.
+    pub async fn execute_transaction_ignoring_foreign_keys(&self, statements: &[String]) -> AppResult<u64> {
+        Ok(match self {
+            Self::Postgres(pool) => execute_in_transaction!(pool, statements, sqlx::PgConnection),
+            Self::Mysql(pool) => {
+                let mut connection = pool.acquire().await?;
+                execute_mysql_ignoring_foreign_keys(&mut connection, statements).await?
+            }
+            Self::Sqlite(pool) => {
+                let mut connection = pool.acquire().await?;
+                execute_sqlite_ignoring_foreign_keys(&mut connection, statements).await?
+            }
+        })
+    }
+
     pub async fn fetch_text_rows(&self, sql: &str) -> AppResult<Vec<Vec<Option<String>>>> {
         let result = self.execute(sql).await?;
         Ok(result
@@ -259,6 +275,53 @@ impl DbPool {
             .map(|row| row.into_iter().map(value_to_text).collect())
             .collect())
     }
+}
+
+async fn execute_mysql_ignoring_foreign_keys(
+    connection: &mut sqlx::MySqlConnection,
+    statements: &[String],
+) -> AppResult<u64> {
+    sqlx::Executor::execute(&mut *connection, "SET FOREIGN_KEY_CHECKS=0").await?;
+    let outcome: AppResult<u64> = async {
+        let mut rows_affected = 0u64;
+        for statement in statements {
+            rows_affected += sqlx::Executor::execute(&mut *connection, statement.as_str()).await?.rows_affected();
+        }
+        Ok(rows_affected)
+    }
+    .await;
+    // Session variables are not transactional: always restore the check, even
+    // when a statement fails, so the pooled connection is not left unsafe.
+    let reset_result = sqlx::Executor::execute(&mut *connection, "SET FOREIGN_KEY_CHECKS=1").await;
+    let rows_affected = outcome?;
+    reset_result?;
+    Ok(rows_affected)
+}
+
+async fn execute_sqlite_ignoring_foreign_keys(
+    connection: &mut sqlx::SqliteConnection,
+    statements: &[String],
+) -> AppResult<u64> {
+    // PRAGMA foreign_keys is a no-op inside a transaction, so disable it before
+    // starting one.
+    sqlx::Executor::execute(&mut *connection, "PRAGMA foreign_keys=OFF").await?;
+    let outcome: AppResult<u64> = async {
+        sqlx::Executor::execute(&mut *connection, "BEGIN").await?;
+        let mut rows_affected = 0u64;
+        for statement in statements {
+            rows_affected += sqlx::Executor::execute(&mut *connection, statement.as_str()).await?.rows_affected();
+        }
+        sqlx::Executor::execute(&mut *connection, "COMMIT").await?;
+        Ok(rows_affected)
+    }
+    .await;
+    if outcome.is_err() {
+        let _ = sqlx::Executor::execute(&mut *connection, "ROLLBACK").await;
+    }
+    let reset_result = sqlx::Executor::execute(&mut *connection, "PRAGMA foreign_keys=ON").await;
+    let rows_affected = outcome?;
+    reset_result?;
+    Ok(rows_affected)
 }
 
 fn value_to_text(value: Value) -> Option<String> {

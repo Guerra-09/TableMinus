@@ -61,6 +61,10 @@ export function Workspace({ opened, isDarkTheme, isConsoleOpen, onToggleConsole,
   const [previewStatements, setPreviewStatements] = useState<string[] | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const tabActionsRef = useRef(new Map<string, TabActions>());
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  const activeTabIdRef = useRef(activeTabId);
+  activeTabIdRef.current = activeTabId;
   const queryTabCounterRef = useRef(0);
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
@@ -141,6 +145,19 @@ export function Workspace({ opened, isDarkTheme, isConsoleOpen, onToggleConsole,
     [activeTabId, pendingCounts],
   );
 
+  const closeTabsForObjects = useCallback((schema: string, tableNames: string[]) => {
+    const removedNames = new Set(tableNames);
+    const currentTabs = tabsRef.current;
+    const remainingTabs = currentTabs.filter(
+      (tab) => tab.kind !== "table" || tab.table.schema !== schema || !removedNames.has(tab.table.name),
+    );
+    if (remainingTabs.length === currentTabs.length) return;
+    setTabs(remainingTabs);
+    if (activeTabIdRef.current && !remainingTabs.some((tab) => tab.id === activeTabIdRef.current)) {
+      setActiveTabId(remainingTabs[remainingTabs.length - 1]?.id ?? null);
+    }
+  }, []);
+
   const confirmStatements = useCallback(
     (statements: string[]) => {
       const safeMode = connection.safeMode || "silent";
@@ -180,6 +197,7 @@ export function Workspace({ opened, isDarkTheme, isConsoleOpen, onToggleConsole,
       openTable,
       openQueryEditor,
       reloadObjects,
+      closeTabsForObjects,
       addHistoryEntry: (sql) =>
         setHistory((currentHistory) =>
           [{ id: crypto.randomUUID(), sql, executedAt: new Date().toISOString() }, ...currentHistory.filter((entry) => entry.sql !== sql)].slice(
@@ -197,7 +215,7 @@ export function Workspace({ opened, isDarkTheme, isConsoleOpen, onToggleConsole,
       setTabPendingCount: (tabId, pendingCount) =>
         setPendingCounts((currentCounts) => (currentCounts[tabId] === pendingCount ? currentCounts : { ...currentCounts, [tabId]: pendingCount })),
     }),
-    [connectionId, connection, driver, schemas, currentSchema, objects, schemaColumns, history, openTable, openQueryEditor, reloadObjects, confirmStatements],
+    [connectionId, connection, driver, schemas, currentSchema, objects, schemaColumns, history, openTable, openQueryEditor, reloadObjects, closeTabsForObjects, confirmStatements],
   );
 
   const activeActions = () => (activeTabId ? tabActionsRef.current.get(activeTabId) : undefined);
