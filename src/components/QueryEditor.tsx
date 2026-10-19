@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { MySQL, PostgreSQL, SQLite, sql as sqlLanguage } from "@codemirror/lang-sql";
 import { Prec } from "@codemirror/state";
@@ -8,7 +8,7 @@ import { format as formatSql } from "sql-formatter";
 import { DataGrid, type CellPosition } from "./DataGrid";
 import { ExportDialog } from "./ExportDialog";
 import { api } from "../lib/api";
-import { MAX_RESULT_TABS, MOD_KEY_LABEL } from "../lib/constants";
+import { MAX_RESULT_TABS, MOD_KEY_LABEL, SELECT_ALL_EVENT } from "../lib/constants";
 import { findStatementAtOffset, splitSqlStatements } from "../lib/sql";
 import type { Driver, QueryResult } from "../lib/types";
 import { useWorkspace } from "../lib/workspaceContext";
@@ -117,6 +117,21 @@ export function QueryEditor({ initialSql, isDarkTheme }: QueryEditorProps) {
 
   const actionsRef = useRef({ runCurrent, runAll, beautify, uglify });
   actionsRef.current = { runCurrent, runAll, beautify, uglify };
+
+  const selectAllSqlRef = useRef<() => void>(() => undefined);
+  selectAllSqlRef.current = () => {
+    const view = editorRef.current?.view;
+    const activeElement = document.activeElement;
+    if (!view || activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) return;
+    if (!view.dom.contains(activeElement)) return;
+    view.dispatch({ selection: { anchor: 0, head: view.state.doc.length }, scrollIntoView: true });
+  };
+
+  useEffect(() => {
+    const handleSelectAll = () => selectAllSqlRef.current();
+    window.addEventListener(SELECT_ALL_EVENT, handleSelectAll);
+    return () => window.removeEventListener(SELECT_ALL_EVENT, handleSelectAll);
+  }, []);
 
   const extensions = useMemo(
     () => [
