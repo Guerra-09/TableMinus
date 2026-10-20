@@ -40,6 +40,7 @@ pub fn run() {
             commands::get_table_structure,
             commands::execute_query,
             commands::execute_transaction,
+            commands::execute_transaction_ignoring_foreign_keys,
             commands::read_text_file,
             commands::write_text_file,
             commands::detect_server_installations,

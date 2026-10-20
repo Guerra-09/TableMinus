@@ -6,6 +6,7 @@ import { Welcome } from "./components/Welcome";
 import { Workspace } from "./components/Workspace";
 import { api } from "./lib/api";
 import { useAppZoom } from "./lib/appZoom";
+import { SELECT_ALL_EVENT } from "./lib/constants";
 import type { OpenedConnection } from "./lib/types";
 
 const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
@@ -40,6 +41,17 @@ export default function App() {
     };
     window.addEventListener("keydown", handleConsoleShortcut);
     return () => window.removeEventListener("keydown", handleConsoleShortcut);
+  }, []);
+
+  useEffect(() => {
+    const handleSelectAll = () => {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) {
+        activeElement.select();
+      }
+    };
+    window.addEventListener(SELECT_ALL_EVENT, handleSelectAll);
+    return () => window.removeEventListener(SELECT_ALL_EVENT, handleSelectAll);
   }, []);
 
   useEffect(() => {
@@ -98,6 +110,9 @@ export default function App() {
       listen("menu-new-connection", async () => {
         await menuActionsRef.current.disconnect();
         setIsNewConnectionRequested(true);
+      }),
+      listen("menu-select-all", () => {
+        window.dispatchEvent(new Event(SELECT_ALL_EVENT));
       }),
       listen<string>("menu-open-connection", async (event) => {
         if (openedConnectionRef.current?.connection.id === event.payload) return;

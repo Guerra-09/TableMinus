@@ -234,6 +234,15 @@ pub async fn execute_transaction(
 }
 
 #[tauri::command]
+pub async fn execute_transaction_ignoring_foreign_keys(
+    state: State<'_, AppState>,
+    id: String,
+    statements: Vec<String>,
+) -> AppResult<u64> {
+    state.pool(&id).await?.execute_transaction_ignoring_foreign_keys(&statements).await
+}
+
+#[tauri::command]
 pub async fn read_text_file(path: String) -> AppResult<String> {
     Ok(tokio::fs::read_to_string(path).await?)
 }

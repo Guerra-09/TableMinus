@@ -457,4 +457,32 @@ mod tests {
 
         pool.close().await;
     }
+
+    #[tokio::test]
+    async fn sqlite_ignoring_foreign_keys_restores_checks() {
+        let pool = sqlite_pool("tableminus-ignore-fk.sqlite").await;
+        pool.execute_transaction(&[
+            "CREATE TABLE parents (id INTEGER PRIMARY KEY)".into(),
+            "CREATE TABLE children (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES parents(id))".into(),
+            "INSERT INTO parents (id) VALUES (1)".into(),
+            "INSERT INTO children (id, parent_id) VALUES (1, 1)".into(),
+        ])
+        .await
+        .expect("setup transaction");
+
+        assert!(
+            pool.execute_transaction(&["DELETE FROM parents".into()]).await.is_err(),
+            "deleting a referenced parent must fail with foreign keys enabled"
+        );
+        pool.execute_transaction_ignoring_foreign_keys(&["DELETE FROM parents".into()])
+            .await
+            .expect("delete ignoring foreign keys");
+
+        let orphan_count = pool.fetch_text_rows("SELECT COUNT(*) FROM children").await.unwrap();
+        assert_eq!(orphan_count[0][0].as_deref(), Some("1"));
+        let pragma = pool.execute("PRAGMA foreign_keys").await.unwrap();
+        assert_eq!(pragma.rows[0][0], json!(1), "foreign keys must be re-enabled");
+
+        pool.close().await;
+    }
 }

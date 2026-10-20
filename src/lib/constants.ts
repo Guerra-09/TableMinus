@@ -1,4 +1,4 @@
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import type { ConnectionConfig, ConnectionTag, Driver, SafeMode } from "./types";
 
 export const DRIVER_LABELS: Record<Driver, string> = {
@@ -43,6 +43,8 @@ export const LOCAL_SERVER_STATUS_POLL_MS = 3000;
 
 export const MAX_RESULT_TABS = 100;
 
+export const SELECT_ALL_EVENT = "tableminus-select-all";
+
 export function tagColor(tag: ConnectionTag): string {
   return CONNECTION_TAGS.find((connectionTag) => connectionTag.value === tag)?.color ?? "#6e6e73";
 }
@@ -78,7 +80,7 @@ export function describeConnection(connection: ConnectionConfig): string {
 
 export const isMacPlatform = navigator.userAgent.includes("Mac");
 
-export function isModifierPressed(event: KeyboardEvent | ReactKeyboardEvent | MouseEvent): boolean {
+export function isModifierPressed(event: KeyboardEvent | ReactKeyboardEvent | MouseEvent | ReactMouseEvent): boolean {
   return isMacPlatform ? event.metaKey : event.ctrlKey;
 }
 

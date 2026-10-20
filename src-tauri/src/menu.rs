@@ -8,9 +8,11 @@ use crate::{connections, error::AppResult};
 const SHOW_CONNECTIONS_ID: &str = "show-connections";
 const NEW_CONNECTION_ID: &str = "new-connection";
 const CLOSE_CONNECTION_ID: &str = "close-connection";
+const SELECT_ALL_ID: &str = "select-all";
 const OPEN_CONNECTION_PREFIX: &str = "open-connection:";
 const SHOW_CONNECTIONS_EVENT: &str = "menu-show-connections";
 const NEW_CONNECTION_EVENT: &str = "menu-new-connection";
+const SELECT_ALL_EVENT: &str = "menu-select-all";
 const OPEN_CONNECTION_EVENT: &str = "menu-open-connection";
 
 /// Builds the native menu bar. The Connections menu lists the saved
@@ -37,7 +39,7 @@ fn build_menu(app: &AppHandle) -> AppResult<Menu<Wry>> {
         .cut()
         .copy()
         .paste()
-        .select_all()
+        .item(&MenuItemBuilder::with_id(SELECT_ALL_ID, "Select All").accelerator("CmdOrCtrl+A").build(app)?)
         .build()?;
 
     let mut open_connection_menu = SubmenuBuilder::new(app, "Open Connection");
@@ -80,6 +82,7 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
     let _ = match menu_id {
         SHOW_CONNECTIONS_ID | CLOSE_CONNECTION_ID => app.emit(SHOW_CONNECTIONS_EVENT, ()),
         NEW_CONNECTION_ID => app.emit(NEW_CONNECTION_EVENT, ()),
+        SELECT_ALL_ID => app.emit(SELECT_ALL_EVENT, ()),
         _ => match menu_id.strip_prefix(OPEN_CONNECTION_PREFIX) {
             Some(connection_id) => app.emit(OPEN_CONNECTION_EVENT, connection_id.to_string()),
             None => Ok(()),

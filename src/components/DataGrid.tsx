@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { isModifierPressed } from "../lib/constants";
+import { isModifierPressed, SELECT_ALL_EVENT } from "../lib/constants";
 import type { CellValue, ColumnMeta, SortState } from "../lib/types";
 
 const ROW_HEIGHT = 24;
@@ -90,6 +90,27 @@ export function DataGrid({
   const widthOf = (columnName: string) => columnWidths[columnName] ?? DEFAULT_COLUMN_WIDTH;
   const totalWidth = columns.reduce((sum, column) => sum + widthOf(column.name), 0);
 
+  const selectAllRows = () => {
+    if (rows.length === 0) return;
+    selectionAnchorRef.current = 0;
+    const allRows = new Set(rows.map((_row, rowIndex) => rowIndex));
+    onSelectionChange(allRows, focusedCell ?? { rowIndex: 0, columnIndex: 0 });
+  };
+
+  const selectAllRef = useRef(selectAllRows);
+  selectAllRef.current = selectAllRows;
+
+  useEffect(() => {
+    const handleSelectAll = () => {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) return;
+      if (!containerRef.current?.contains(activeElement)) return;
+      selectAllRef.current();
+    };
+    window.addEventListener(SELECT_ALL_EVENT, handleSelectAll);
+    return () => window.removeEventListener(SELECT_ALL_EVENT, handleSelectAll);
+  }, []);
+
   const startEditing = (cell: CellPosition, initialDraft?: string) => {
     if (!isEditable || getRowStatus?.(cell.rowIndex) === "delete") return;
     const currentValue = rows[cell.rowIndex]?.[cell.columnIndex];
@@ -126,6 +147,7 @@ export function DataGrid({
   };
 
   const handleCellMouseDown = (event: React.MouseEvent, rowIndex: number, columnIndex: number) => {
+    if (event.button === 0) containerRef.current?.focus();
     if (event.button === 1) {
       event.preventDefault();
       onCellMiddleClick?.(rowIndex, columnIndex);
@@ -153,6 +175,11 @@ export function DataGrid({
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (editingCell) return;
     if (onGridKeyDown?.(event)) return;
+    if (isModifierPressed(event) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      selectAllRows();
+      return;
+    }
     if (!focusedCell) {
       if (rows.length > 0 && event.key.startsWith("Arrow")) {
         event.preventDefault();
