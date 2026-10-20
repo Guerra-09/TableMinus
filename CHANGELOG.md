@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-20 — Alpha
+
 ### Added
 
 - **Multi-select in the sidebar**: press ⌘A (Ctrl+A) after clicking a table to select every visible item, or use ⌘-click / Shift-click to select a range. A selection bar then offers **Truncate…** (empty the selected tables) and **Drop…** (delete the selected tables/views), with a confirmation listing the affected objects. Dropped objects also close their open tabs.

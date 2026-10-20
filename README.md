@@ -4,7 +4,7 @@
 
 TableMinus is the "minus" version of a modern GUI database client: fewer features, zero cost, and fully open source. It is meant for anyone who wants a simple, fast desktop tool to connect to a database, browse tables, edit rows and run SQL while trying things out — no license, no account, no telemetry.
 
-> **Status: 0.4.0 alpha.** Core workflow works, rough edges expected. Feedback and pull requests are welcome.
+> **Status: 0.4.1 alpha.** Core workflow works, rough edges expected. Feedback and pull requests are welcome.
 
 Built with Tauri 2 + React 19 + Rust (sqlx). Runs on macOS, Windows and Linux.
 
