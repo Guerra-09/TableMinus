@@ -27,6 +27,8 @@ interface WelcomeProps {
   onConnect: (connectionId: string) => void;
 }
 
+const FOLDERS_STORAGE_KEY = "tableminus.folders";
+
 type ServerTransition = "starting" | "stopping";
 
 const SERVER_STATE_LABELS: Record<LocalServerState, string> = {
@@ -56,6 +58,16 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
   const [serverLog, setServerLog] = useState<{ connectionName: string; content: string } | null>(null);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isMcpSettingsOpen, setIsMcpSettingsOpen] = useState(false);
+  const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
+  const [storedFolders, setStoredFolders] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(FOLDERS_STORAGE_KEY) ?? "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [newFolderName, setNewFolderName] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   const reloadConnections = useCallback(async () => {
     try {
@@ -129,6 +141,54 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
     );
   }, [connections, searchText]);
 
+  const folderNames = useMemo(
+    () =>
+      [...new Set([...storedFolders, ...connections.map((connection) => (connection.folder ?? "").trim())].filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [storedFolders, connections],
+  );
+
+  const saveStoredFolders = (folders: string[]) => {
+    setStoredFolders(folders);
+    try {
+      localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+    } catch {
+      // Folders that contain connections still persist; only empty ones are lost.
+    }
+  };
+
+  const createFolder = () => {
+    const name = (newFolderName ?? "").trim();
+    if (name && !folderNames.includes(name)) saveStoredFolders([...storedFolders, name]);
+    setNewFolderName(null);
+  };
+
+  const moveToFolder = async (connectionId: string, folder: string) => {
+    const connection = connections.find((item) => item.id === connectionId);
+    if (!connection || (connection.folder ?? "") === folder) return;
+    await api.saveConnection({ ...connection, folder }, null);
+    await reloadConnections();
+  };
+
+  const deleteFolder = async (folder: string) => {
+    for (const connection of connections.filter((item) => (item.folder ?? "").trim() === folder)) {
+      await api.saveConnection({ ...connection, folder: "" }, null);
+    }
+    saveStoredFolders(storedFolders.filter((name) => name !== folder));
+    await reloadConnections();
+  };
+
+  const openFolderMenu = (event: React.MouseEvent, folder: string) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, entries: [{ label: "Delete folder", onSelect: () => deleteFolder(folder) }] });
+  };
+
+  const readDraggedId = (event: React.DragEvent) => event.dataTransfer.getData("text/plain");
+
+  const toggleFolder = (folder: string) =>
+    setCollapsedFolders((current) => (current.includes(folder) ? current.filter((name) => name !== folder) : [...current, folder]));
+
   const handleSaved = async (config: ConnectionConfig, shouldConnect: boolean) => {
     setFormState(null);
     await reloadConnections();
@@ -189,52 +249,13 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
     });
   };
 
-  return (
-    <div className="welcome">
-      <div className="welcome-intro">
-        <div className="welcome-logo">T−</div>
-        <div className="welcome-title">TableMinus</div>
-        <div className="muted">Free, open-source, lightweight database client</div>
-        <div className="welcome-actions">
-          <button className="btn btn-primary" onClick={() => setFormState({ config: createEmptyConnection() })}>
-            Create a new connection…
-          </button>
-          <button className="btn" onClick={() => setIsUrlImportOpen(true)}>
-            Import from URL…
-          </button>
-          <button className="btn" onClick={() => setIsMcpSettingsOpen(true)}>
-            AI access (MCP)…
-          </button>
-          <button className={`btn ${isConsoleOpen ? "btn-primary" : ""}`} onClick={onToggleConsole} title={`${MOD_KEY_LABEL}⇧C`}>
-            {isConsoleOpen ? "Hide console log" : "Console log"}
-          </button>
-        </div>
-        <button className="welcome-version" onClick={() => setIsChangelogOpen(true)} title="See what's new">
-          Version {packageInfo.version} · What's new
-        </button>
-      </div>
-
-      <div className="welcome-connections">
-        <div className="welcome-search">
-          <input placeholder="Search for connection…" value={searchText} onChange={(event) => setSearchText(event.target.value)} />
-        </div>
-        {loadError && <div className="inline-error error-text">{loadError}</div>}
-        {connectError && <div className="inline-error error-text">{connectError}</div>}
-        {serverError && <div className="inline-error error-text">{serverError}</div>}
-        <div className="connection-list">
-          {filteredConnections.length === 0 ? (
-            <div className="empty-state">
-              <div>No connections yet</div>
-              <button className="btn" onClick={() => setFormState({ config: createEmptyConnection() })}>
-                Create a new connection
-              </button>
-            </div>
-          ) : (
-            filteredConnections.map((connection) => {
+  const renderConnection = (connection: ConnectionConfig) => {
               const connectionTag = CONNECTION_TAGS.find((tag) => tag.value === connection.tag);
               return (
                 <div
                   key={connection.id}
+                  draggable
+                  onDragStart={(event) => event.dataTransfer.setData("text/plain", connection.id)}
                   className={`connection-item ${selectedId === connection.id ? "is-selected" : ""}`}
                   onClick={() => setSelectedId(connection.id)}
                   onDoubleClick={() => connectWithLocalServer(connection)}
@@ -263,7 +284,90 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
                   )}
                 </div>
               );
-            })
+  };
+
+  return (
+    <div className="welcome">
+      <div className="welcome-intro">
+        <div className="welcome-logo">T−</div>
+        <div className="welcome-title">TableMinus</div>
+        <div className="muted">Free, open-source, lightweight database client</div>
+        <div className="welcome-actions">
+          <button className="btn btn-primary" onClick={() => setFormState({ config: createEmptyConnection() })}>
+            Create a new connection…
+          </button>
+          <button className="btn" onClick={() => setNewFolderName("")}>
+            New folder…
+          </button>
+          <button className="btn" onClick={() => setIsUrlImportOpen(true)}>
+            Import from URL…
+          </button>
+          <button className="btn" onClick={() => setIsMcpSettingsOpen(true)}>
+            AI access (MCP)…
+          </button>
+          <button className={`btn ${isConsoleOpen ? "btn-primary" : ""}`} onClick={onToggleConsole} title={`${MOD_KEY_LABEL}⇧C`}>
+            {isConsoleOpen ? "Hide console log" : "Console log"}
+          </button>
+        </div>
+        <button className="welcome-version" onClick={() => setIsChangelogOpen(true)} title="See what's new">
+          Version {packageInfo.version} · What's new
+        </button>
+      </div>
+
+      <div className="welcome-connections">
+        <div className="welcome-search">
+          <input placeholder="Search for connection…" value={searchText} onChange={(event) => setSearchText(event.target.value)} />
+        </div>
+        {loadError && <div className="inline-error error-text">{loadError}</div>}
+        {connectError && <div className="inline-error error-text">{connectError}</div>}
+        {serverError && <div className="inline-error error-text">{serverError}</div>}
+        <div
+          className="connection-list"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            moveToFolder(readDraggedId(event), "");
+          }}
+        >
+          {filteredConnections.length === 0 && folderNames.length === 0 ? (
+            <div className="empty-state">
+              <div>No connections yet</div>
+              <button className="btn" onClick={() => setFormState({ config: createEmptyConnection() })}>
+                Create a new connection
+              </button>
+            </div>
+          ) : (
+            <>
+              {folderNames.map((folder) => {
+                const folderConnections = filteredConnections.filter((connection) => (connection.folder ?? "").trim() === folder);
+                if (folderConnections.length === 0 && searchText.trim()) return null;
+                const isCollapsed = collapsedFolders.includes(folder) && !searchText.trim();
+                return (
+                  <div
+                    key={folder}
+                    className={dropTarget === folder ? "is-drop-target" : ""}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setDropTarget(folder);
+                    }}
+                    onDragLeave={() => setDropTarget(null)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setDropTarget(null);
+                      moveToFolder(readDraggedId(event), folder);
+                    }}
+                  >
+                    <div className="folder-header" onClick={() => toggleFolder(folder)} onContextMenu={(event) => openFolderMenu(event, folder)}>
+                      <span>{isCollapsed ? "▸" : "▾"}</span> {folder} <span className="muted">({folderConnections.length})</span>
+                    </div>
+                    {!isCollapsed && folderConnections.map(renderConnection)}
+                  </div>
+                );
+              })}
+              {filteredConnections.filter((connection) => !(connection.folder ?? "").trim()).map(renderConnection)}
+            </>
           )}
         </div>
       </div>
@@ -301,6 +405,32 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
             onKeyDown={(event) => event.key === "Enter" && importFromUrl()}
           />
           {urlError && <p className="error-text">{urlError}</p>}
+        </Modal>
+      )}
+
+      {newFolderName !== null && (
+        <Modal
+          title="New folder"
+          onClose={() => setNewFolderName(null)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setNewFolderName(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={createFolder}>
+                Create
+              </button>
+            </>
+          }
+        >
+          <input
+            style={{ width: "100%" }}
+            autoFocus
+            placeholder="Folder name"
+            value={newFolderName}
+            onChange={(event) => setNewFolderName(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && createFolder()}
+          />
         </Modal>
       )}
 

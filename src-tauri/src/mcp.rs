@@ -689,6 +689,7 @@ mod tests {
             tag: tag.into(),
             color: String::new(),
             safe_mode: safe_mode.into(),
+            folder: String::new(),
             local_server: None,
             ssh: None,
         }

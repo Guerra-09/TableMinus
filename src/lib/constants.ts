@@ -62,6 +62,7 @@ export function createEmptyConnection(driver: Driver = "postgres"): ConnectionCo
     tag: "local",
     color: tagColor("local"),
     safeMode: "silent",
+    folder: "",
     localServer: null,
     ssh: null,
   };

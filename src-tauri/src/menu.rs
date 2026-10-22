@@ -48,7 +48,20 @@ fn build_menu(app: &AppHandle) -> AppResult<Menu<Wry>> {
             &MenuItemBuilder::with_id("no-saved-connections", "No saved connections").enabled(false).build(app)?,
         );
     }
-    for connection in &saved_connections {
+    let mut folder_names: Vec<&str> =
+        saved_connections.iter().map(|connection| connection.folder.trim()).filter(|folder| !folder.is_empty()).collect();
+    folder_names.sort_by_key(|folder| folder.to_lowercase());
+    folder_names.dedup();
+    for folder in folder_names {
+        let mut folder_menu = SubmenuBuilder::new(app, folder);
+        for connection in saved_connections.iter().filter(|connection| connection.folder.trim() == folder) {
+            folder_menu = folder_menu.item(
+                &MenuItemBuilder::with_id(format!("{OPEN_CONNECTION_PREFIX}{}", connection.id), &connection.name).build(app)?,
+            );
+        }
+        open_connection_menu = open_connection_menu.item(&folder_menu.build()?);
+    }
+    for connection in saved_connections.iter().filter(|connection| connection.folder.trim().is_empty()) {
         open_connection_menu = open_connection_menu.item(
             &MenuItemBuilder::with_id(format!("{OPEN_CONNECTION_PREFIX}{}", connection.id), &connection.name).build(app)?,
         );

@@ -451,6 +451,7 @@ mod tests {
             tag: String::new(),
             color: String::new(),
             safe_mode: String::new(),
+            folder: String::new(),
             local_server: Some(LocalServerConfig { is_enabled: true, bin_dir: MYSQL_BIN.into(), data_dir: String::new() }),
             ssh: None,
         };

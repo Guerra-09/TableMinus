@@ -1548,3 +1548,18 @@ textarea:focus {
 .mcp-settings .changelog-section {
   margin-top: 18px;
 }
+
+.is-drop-target {
+  background: var(--color-hover, rgba(127, 127, 127, 0.15));
+  border-radius: var(--radius);
+}
+
+.folder-header {
+  padding: 8px 10px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  user-select: none;
+}

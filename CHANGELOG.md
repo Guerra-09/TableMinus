@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Connection folders**: create folders with **New folder…** and drag connections into them to keep a project's connections together. Folders are collapsible, can be deleted from their context menu (connections go back to the main list), and appear as submenus in Connections ▸ Open Connection. Drop a connection outside any folder to remove it from its folder.
+
 ## [0.4.1] - 2026-10-20 — Alpha
 
 ### Added

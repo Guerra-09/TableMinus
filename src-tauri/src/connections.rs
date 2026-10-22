@@ -40,6 +40,8 @@ pub struct ConnectionConfig {
     #[serde(default)]
     pub safe_mode: String,
     #[serde(default)]
+    pub folder: String,
+    #[serde(default)]
     pub local_server: Option<LocalServerConfig>,
     #[serde(default)]
     pub ssh: Option<SshConfig>,

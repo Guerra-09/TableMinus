@@ -390,6 +390,7 @@ mod tests {
             tag: String::new(),
             color: String::new(),
             safe_mode: String::new(),
+            folder: String::new(),
             local_server: None,
             ssh: None,
         };

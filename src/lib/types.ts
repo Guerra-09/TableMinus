@@ -47,6 +47,7 @@ export interface ConnectionConfig {
   tag: ConnectionTag;
   color: string;
   safeMode: SafeMode;
+  folder: string;
   localServer: LocalServerConfig | null;
   ssh: SshConfig | null;
 }
