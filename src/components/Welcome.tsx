@@ -58,7 +58,7 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
   const [serverLog, setServerLog] = useState<{ connectionName: string; content: string } | null>(null);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isMcpSettingsOpen, setIsMcpSettingsOpen] = useState(false);
-  const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
   const [storedFolders, setStoredFolders] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(FOLDERS_STORAGE_KEY) ?? "[]");
@@ -176,6 +176,7 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
       await api.saveConnection({ ...connection, folder: "" }, null);
     }
     saveStoredFolders(storedFolders.filter((name) => name !== folder));
+    if (openFolder === folder) setOpenFolder(null);
     await reloadConnections();
   };
 
@@ -186,8 +187,11 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
 
   const readDraggedId = (event: React.DragEvent) => event.dataTransfer.getData("text/plain");
 
-  const toggleFolder = (folder: string) =>
-    setCollapsedFolders((current) => (current.includes(folder) ? current.filter((name) => name !== folder) : [...current, folder]));
+  const isSearching = searchText.trim().length > 0;
+  const rootConnections = filteredConnections.filter((connection) => !(connection.folder ?? "").trim());
+  const folderConnections = filteredConnections.filter((connection) => (connection.folder ?? "").trim() === openFolder);
+
+  const startNewConnection = () => setFormState({ config: { ...createEmptyConnection(), folder: openFolder ?? "" } });
 
   const handleSaved = async (config: ConnectionConfig, shouldConnect: boolean) => {
     setFormState(null);
@@ -293,11 +297,8 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
         <div className="welcome-title">TableMinus</div>
         <div className="muted">Free, open-source, lightweight database client</div>
         <div className="welcome-actions">
-          <button className="btn btn-primary" onClick={() => setFormState({ config: createEmptyConnection() })}>
+          <button className="btn btn-primary" onClick={startNewConnection}>
             Create a new connection…
-          </button>
-          <button className="btn" onClick={() => setNewFolderName("")}>
-            New folder…
           </button>
           <button className="btn" onClick={() => setIsUrlImportOpen(true)}>
             Import from URL…
@@ -317,6 +318,9 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
       <div className="welcome-connections">
         <div className="welcome-search">
           <input placeholder="Search for connection…" value={searchText} onChange={(event) => setSearchText(event.target.value)} />
+          <button className="btn folder-add-button" onClick={() => setNewFolderName("")} title="New folder" aria-label="New folder">
+            📁＋
+          </button>
         </div>
         {loadError && <div className="inline-error error-text">{loadError}</div>}
         {connectError && <div className="inline-error error-text">{connectError}</div>}
@@ -329,44 +333,77 @@ export function Welcome({ isNewConnectionRequested, onNewConnectionRequestHandle
             moveToFolder(readDraggedId(event), "");
           }}
         >
-          {filteredConnections.length === 0 && folderNames.length === 0 ? (
+          {isSearching ? (
+            filteredConnections.map(renderConnection)
+          ) : openFolder !== null ? (
+            <>
+              <div
+                className={`folder-back ${dropTarget === "" ? "is-drop-target" : ""}`}
+                onClick={() => setOpenFolder(null)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDropTarget("");
+                }}
+                onDragLeave={() => setDropTarget(null)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDropTarget(null);
+                  moveToFolder(readDraggedId(event), "");
+                }}
+                title="Click to go back, or drop a connection here to take it out of the folder"
+              >
+                ‹ All connections
+                <span className="folder-back-name">{openFolder}</span>
+              </div>
+              {folderConnections.length === 0 ? (
+                <div className="empty-state">
+                  <div>This folder is empty. Drag connections here from the main list.</div>
+                </div>
+              ) : (
+                folderConnections.map(renderConnection)
+              )}
+            </>
+          ) : rootConnections.length === 0 && folderNames.length === 0 ? (
             <div className="empty-state">
               <div>No connections yet</div>
-              <button className="btn" onClick={() => setFormState({ config: createEmptyConnection() })}>
+              <button className="btn" onClick={startNewConnection}>
                 Create a new connection
               </button>
             </div>
           ) : (
             <>
-              {folderNames.map((folder) => {
-                const folderConnections = filteredConnections.filter((connection) => (connection.folder ?? "").trim() === folder);
-                if (folderConnections.length === 0 && searchText.trim()) return null;
-                const isCollapsed = collapsedFolders.includes(folder) && !searchText.trim();
-                return (
-                  <div
-                    key={folder}
-                    className={dropTarget === folder ? "is-drop-target" : ""}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setDropTarget(folder);
-                    }}
-                    onDragLeave={() => setDropTarget(null)}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setDropTarget(null);
-                      moveToFolder(readDraggedId(event), folder);
-                    }}
-                  >
-                    <div className="folder-header" onClick={() => toggleFolder(folder)} onContextMenu={(event) => openFolderMenu(event, folder)}>
-                      <span>{isCollapsed ? "▸" : "▾"}</span> {folder} <span className="muted">({folderConnections.length})</span>
+              {folderNames.map((folder) => (
+                <div
+                  key={folder}
+                  className={`connection-item ${dropTarget === folder ? "is-drop-target" : ""}`}
+                  onClick={() => setOpenFolder(folder)}
+                  onContextMenu={(event) => openFolderMenu(event, folder)}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDropTarget(folder);
+                  }}
+                  onDragLeave={() => setDropTarget(null)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDropTarget(null);
+                    moveToFolder(readDraggedId(event), folder);
+                  }}
+                >
+                  <div className="driver-icon folder-icon">📁</div>
+                  <div className="connection-info">
+                    <div className="connection-name">{folder}</div>
+                    <div className="connection-detail muted">
+                      {connections.filter((connection) => (connection.folder ?? "").trim() === folder).length} connections
                     </div>
-                    {!isCollapsed && folderConnections.map(renderConnection)}
                   </div>
-                );
-              })}
-              {filteredConnections.filter((connection) => !(connection.folder ?? "").trim()).map(renderConnection)}
+                  <span className="muted">›</span>
+                </div>
+              ))}
+              {rootConnections.map(renderConnection)}
             </>
           )}
         </div>

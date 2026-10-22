@@ -5,9 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-22 — Alpha
+
 ### Added
 
-- **Connection folders**: create folders with **New folder…** and drag connections into them to keep a project's connections together. Folders are collapsible, can be deleted from their context menu (connections go back to the main list), and appear as submenus in Connections ▸ Open Connection. Drop a connection outside any folder to remove it from its folder.
+- **Connection folders**: create a folder with **New folder…** on the welcome screen. It appears in the list like a connection; click it to open a view with only its connections, and use "‹ All connections" to go back. Drag connections onto a folder to move them in, or onto "‹ All connections" to take them out. New connections created inside a folder stay in it. Right-click a folder to delete it (its connections return to the main list). Folders also appear as submenus in Connections ▸ Open Connection.
+
+### Fixed
+
+- **MariaDB local server**: the managed local server now works with MariaDB. The data directory is initialized with `mariadb-install-db` and MySQL-only options (such as `--mysqlx=OFF`) are no longer passed to MariaDB.
 
 ## [0.4.1] - 2026-10-20 — Alpha
 

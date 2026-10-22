@@ -167,6 +167,10 @@ fn version_of(binary_path: &Path) -> String {
         .unwrap_or_default()
 }
 
+fn is_mariadb(bin_directory: &Path) -> bool {
+    version_of(&bin_directory.join("mysqld")).contains("MariaDB")
+}
+
 fn candidate_bin_directories(driver: Driver) -> Vec<PathBuf> {
     let formula_prefixes: &[&str] = match driver {
         Driver::Mysql => &["mysql", "mariadb", "percona-server"],
@@ -345,6 +349,14 @@ async fn initialize_data_directory(
     paths: &ServerPaths,
 ) -> AppResult<()> {
     match config.driver {
+        Driver::Mysql if is_mariadb(bin_directory) => {
+            let mut command = Command::new(bin_directory.join("mariadb-install-db"));
+            command
+                .arg("--no-defaults")
+                .arg("--auth-root-authentication-method=normal")
+                .arg(format!("--datadir={}", paths.data.display()));
+            run_to_completion(&mut command, &paths.log, "MariaDB data directory initialization").await
+        }
         Driver::Mysql => {
             let mut command = Command::new(bin_directory.join("mysqld"));
             command
@@ -382,6 +394,7 @@ async fn initialize_data_directory(
 }
 
 fn spawn_server(config: &ConnectionConfig, server_binary: &Path, paths: &ServerPaths) -> AppResult<Child> {
+    let mariadb = server_binary.parent().is_some_and(is_mariadb);
     let log_file = open_log_for_append(&paths.log)?;
     let mut command = Command::new(server_binary);
     match config.driver {
@@ -392,9 +405,11 @@ fn spawn_server(config: &ConnectionConfig, server_binary: &Path, paths: &ServerP
                 .arg(format!("--port={}", config.port))
                 .arg("--bind-address=127.0.0.1")
                 .arg(format!("--socket={}", paths.socket_directory.join("mysql.sock").display()))
-                .arg("--mysqlx=OFF")
                 .arg(format!("--pid-file={}", paths.root.join("mysqld.pid").display()))
                 .arg(format!("--log-error={}", paths.log.display()));
+            if !mariadb {
+                command.arg("--mysqlx=OFF");
+            }
         }
         Driver::Postgres | Driver::Sqlite => {
             command
